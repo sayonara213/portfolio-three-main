@@ -25,15 +25,13 @@ a{color:inherit}
 /* ---------- Stage ---------- */
 #gl{position:fixed;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;display:block}
 #scrim{position:fixed;inset:0;z-index:3;pointer-events:none;background:radial-gradient(60% 50% at 50% 50%,rgba(11,11,12,.6),rgba(11,11,12,.2));visibility:hidden;opacity:0}
-/* 7 viewports of scroll + 1 for the last screen. Timeline time is measured in these viewport units. */
-#track{height:800svh}
+/* 4.5 viewports of scroll + 1 for the last screen. Timeline time is measured in these viewport units. */
+#track{height:550svh}
 
 /* ---------- Splash ---------- */
 #splash{position:fixed;inset:0;z-index:50;background:var(--ink);display:grid;place-items:center;clip-path:inset(0 0 0 0)}
 .splash-inner{display:grid;gap:22px;justify-items:center;padding-inline:var(--gutter)}
-.splash-name{font-family:var(--f-display);font-weight:800;font-size:clamp(2.4rem,9vw,7rem);letter-spacing:-.03em;line-height:.95;margin:0;display:flex;gap:.28em;overflow:hidden;padding-block:.08em}
-.splash-name .word{display:inline-flex}
-.splash-name .ch{display:inline-block;will-change:transform}
+.splash-name{font-family:var(--f-display);font-weight:800;font-size:clamp(2.4rem,9vw,7rem);letter-spacing:-.03em;line-height:.95;margin:0;display:flex;gap:.28em;justify-content:center}
 .splash-meta{display:flex;gap:16px;align-items:center;font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
 .splash-bar{width:min(320px,60vw);height:2px;background:var(--line);border-radius:2px;overflow:hidden}
 .splash-bar i{display:block;height:100%;width:100%;background:var(--rainbow);transform-origin:left;transform:scaleX(0)}
@@ -63,8 +61,7 @@ a{color:inherit}
 /* Hero sits under the canvas so the keyboard may overlap the name */
 #p-hero{z-index:1;visibility:visible;opacity:1;display:flex;flex-direction:column;align-items:center;padding:calc(90px + env(safe-area-inset-top,0px)) var(--gutter) 28px;text-align:center}
 .hero-name{font-family:var(--f-display);font-weight:800;font-size:clamp(3rem,10.5vw,10.5rem);line-height:.9;letter-spacing:-.045em;margin:.18em 0 0;text-transform:uppercase;text-wrap:balance}
-.hero-name .line{display:inline-block;overflow:hidden;padding-bottom:.06em;vertical-align:top}
-.hero-name .ch{display:inline-block}
+.hero-name .line{display:inline-block;vertical-align:top}
 .hero-hint{margin-top:auto;display:flex;align-items:center;gap:10px;font-family:var(--f-mono);font-size:12px;color:var(--mute);letter-spacing:.06em}
 kbd{display:inline-grid;place-items:center;min-width:26px;height:26px;padding:0 6px;border-radius:7px;background:var(--paper);color:var(--ink);font-family:var(--f-mono);font-size:12px;box-shadow:0 3px 0 #9a9aa2,0 4px 10px rgba(0,0,0,.5)}
 kbd.rgb{background:var(--rainbow);color:var(--ink)}
@@ -88,17 +85,25 @@ kbd.rgb{background:var(--rainbow);color:var(--ink)}
 .readout strong{display:block;font-family:var(--f-display);font-weight:600;font-size:13px}
 .readout small{color:var(--mute)}
 
-/* Experience: one card per project, alternating side of the keyboard */
+/* Experience: keyboard on the left, an interactive project carousel on the right */
 #p-exp{visibility:visible;opacity:1}
-.project{position:absolute;top:0;bottom:0;margin-block:auto;height:fit-content;width:min(460px,40vw);display:grid;gap:14px;visibility:hidden;opacity:0}
-.project[data-side="left"]{left:var(--gutter)}
-.project[data-side="right"]{right:var(--gutter)}
-.project .cover{margin:0;border-radius:14px;overflow:hidden;border:1px solid var(--line);aspect-ratio:16/10;background:var(--ink-2)}
-.project .cover img{display:block;width:100%;height:100%;object-fit:cover}
-.project h3{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(1.6rem,2.8vw,2.4rem);letter-spacing:-.03em;line-height:1.05}
-.project .desc{margin:0;color:#c8c8cf;max-width:44ch}
-.project .meta{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
-.project .count{font-family:var(--f-mono);font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums}
+.exp{position:absolute;right:var(--gutter);top:0;bottom:0;margin-block:auto;height:fit-content;width:min(480px,42vw);display:grid;gap:16px;visibility:hidden;opacity:0;pointer-events:auto;touch-action:pan-y}
+.exp .meta{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+.exp .count{font-family:var(--f-mono);font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums}
+.slides{display:grid}
+/* slides stack in one grid cell; GSAP fades them, the first is visible before it runs */
+.slide{grid-area:1/1;display:grid;gap:14px;align-content:start;visibility:hidden;opacity:0}
+.slide:first-child{visibility:visible;opacity:1}
+.slide .cover{margin:0;border-radius:14px;overflow:hidden;border:1px solid var(--line);aspect-ratio:16/10;background:var(--ink-2)}
+.slide .cover img{display:block;width:100%;height:100%;object-fit:cover}
+.slide h3{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(1.6rem,2.8vw,2.4rem);letter-spacing:-.03em;line-height:1.05}
+.slide .desc{margin:0;color:#c8c8cf;max-width:44ch}
+.exp-nav{display:flex;align-items:center;gap:14px}
+.exp-nav .btn-ghost{padding:8px 14px;line-height:1}
+.exp-nav .btn-ghost:disabled{opacity:.35;pointer-events:none}
+.dots{display:flex;gap:8px;align-items:center;flex:1}
+.dots button{width:8px;height:8px;padding:0;border:0;border-radius:99px;background:var(--line);cursor:pointer;transition:width .3s,background .3s}
+.dots button[aria-current="true"]{width:24px;background:var(--paper)}
 .chips{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
 .chips li{font-family:var(--f-mono);font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--line);color:#d6d6dc;display:flex;align-items:center;gap:6px}
 .chips li b{width:7px;height:7px;border-radius:2px;background:var(--c)}
@@ -156,10 +161,10 @@ kbd.rgb{background:var(--rainbow);color:var(--ink)}
   .cats{grid-template-columns:1fr 1fr;column-gap:14px}
   .cats li{font-size:12px;padding:7px 0;gap:8px}
   .cats li span{display:none}
-  .project,.project[data-side]{left:16px;right:16px;width:auto;top:auto;margin-block:0;bottom:calc(18px + env(safe-area-inset-bottom,0px));gap:10px;padding-top:16px;background:linear-gradient(to bottom,rgba(11,11,12,0),rgba(11,11,12,.94) 14%)}
-  .project .cover{aspect-ratio:auto;height:110px}
-  .project h3{font-size:1.5rem}
-  .project .desc{font-size:14px}
+  .exp{left:16px;right:16px;width:auto;top:auto;margin-block:0;bottom:calc(18px + env(safe-area-inset-bottom,0px));gap:10px;padding-top:16px;background:linear-gradient(to bottom,rgba(11,11,12,0),rgba(11,11,12,.94) 14%)}
+  .slide .cover{aspect-ratio:auto;height:110px}
+  .slide h3{font-size:1.5rem}
+  .slide .desc{font-size:14px}
   .footer-title{font-size:clamp(2.2rem,11vw,3.4rem)}
   .footer-bottom{flex-direction:column-reverse;gap:14px}
 }

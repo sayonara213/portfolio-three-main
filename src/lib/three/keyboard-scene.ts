@@ -37,8 +37,6 @@ export type Key = {
   tex: Partial<Record<LegendState, THREE.Texture | null>>;
   hover: number;
   press: number;
-  /** splash intro: 1 = lifted 4 units, 0 = seated */
-  drop: number;
 };
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
@@ -87,7 +85,7 @@ export class KeyboardScene {
   readonly camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
   readonly keys: Key[] = [];
   /** Single source of truth for the board. GSAP writes it, the render loop reads it. */
-  readonly kb: KeyboardState = { x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0, s: 1, flip: 0, flip2: 0, exp: 0, proj: 0, glow: 0, motion: 0, introY: -7 };
+  readonly kb: KeyboardState = { x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0, s: 1, flip: 0, flip2: 0, exp: 0, proj: 0, glow: 0, motion: 0, intro: 0 };
   /** 0..1 page scroll progress, used for the star drift */
   scroll = 0;
   hovered: Key | null = null;
@@ -266,7 +264,7 @@ export class KeyboardScene {
         const k: Key = {
           i: r * COLS + c, r, c, hero, nameCh, ...t,
           techColor: new THREE.Color(t.color), footColor: nameCh ? WHITE : GRAPHITE,
-          pivot, cap, mat, legend, legendMat, state: null, tex: {}, hover: 0, press: 0, drop: 1,
+          pivot, cap, mat, legend, legendMat, state: null, tex: {}, hover: 0, press: 0,
         };
         cap.userData.k = k;
         this.caps.push(cap);
@@ -367,9 +365,9 @@ export class KeyboardScene {
     this.par.y += ((desk && this.ndc.x < 2 ? this.ndc.y : 0) - this.par.y) * 0.05;
 
     const b = this.board;
-    b.position.set(kb.x, kb.y + kb.introY + Math.sin(t * 0.9) * 0.06 * m, kb.z);
+    b.position.set(kb.x, kb.y + Math.sin(t * 0.9) * 0.06 * m, kb.z);
     b.rotation.set(kb.rx - this.par.y * 0.06 * m, kb.ry + this.par.x * 0.1 * m, kb.rz);
-    b.scale.setScalar(kb.s);
+    b.scale.setScalar(kb.s * (0.82 + 0.18 * kb.intro));
     // keep the shadow light fixed relative to the board so its shadow frustum stays tight
     this.sun.position.set(b.position.x + 3, b.position.y + 9, b.position.z + 11);
     this.sun.target.position.copy(b.position);
@@ -402,7 +400,7 @@ export class KeyboardScene {
       k.pivot.rotation.x = reduced ? 0 : (p1 + p2) * Math.PI * 2;
       k.pivot.position.z =
         0.32 + (reduced ? 0 : (Math.sin(p1 * Math.PI) + Math.sin(p2 * Math.PI)) * 1.3) +
-        k.hover * 0.16 - k.press * 0.16 - grey * 0.2 + kb.exp * u * 0.06 + k.drop * 4;
+        k.hover * 0.16 - k.press * 0.16 - grey * 0.2 + kb.exp * u * 0.06;
       k.legend.rotation.z = kb.rz < -1 ? Math.PI / 2 : 0; // keep legends upright when the board is portrait (mobile stack)
     }
 

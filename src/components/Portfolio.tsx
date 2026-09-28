@@ -8,7 +8,7 @@ import { ICONS } from "@/lib/content/icons";
 import { I18N, LANGS } from "@/lib/content/i18n";
 import { setLang, useLang } from "@/lib/content/lang-store";
 import { PROJECTS, placeholderCover } from "@/lib/content/projects";
-import { COLS, ROWS, TECH, TECH_FLAT, colorOf, inkFor, type Tech } from "@/lib/content/tech";
+import { TECH, TECH_FLAT, colorOf, inkFor, type Tech } from "@/lib/content/tech";
 import { KeyboardScene, type Key } from "@/lib/three/keyboard-scene";
 import { LABELS, SEG, buildTimeline } from "@/lib/timeline";
 
@@ -21,16 +21,6 @@ const USED = PROJECTS.map((p) => TECH_FLAT.map((t) => (p.tech.includes(t.name) ?
 
 type Active = Tech & { r: number };
 
-/** One span per character, so GSAP can stagger letters in the splash and the hero name. */
-const Chars = ({ text }: { text: string }) => (
-  <>
-    {[...text].map((ch, i) => (
-      <span className="ch" key={i}>
-        {ch}
-      </span>
-    ))}
-  </>
-);
 
 const Logo = ({ slug, fill }: { slug: string; fill: string }) => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -45,6 +35,10 @@ export default function Portfolio() {
   const [contactOpen, setContactOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [active, setActive] = useState<Active | null>(null);
+  const [idx, setIdx] = useState(0);
+  const idxRef = useRef(0);
+  const swipeX = useRef(0);
+  const goRef = useRef<(n: number) => void>(() => {});
 
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -103,6 +97,22 @@ export default function Portfolio() {
       },
     });
 
+    // ---------- experience carousel: slides drive which keys are lit (kb.proj) ----------
+    const slides = gsap.utils.toArray<HTMLElement>(".slide", root);
+    gsap.set(slides.slice(1), { autoAlpha: 0 });
+    const go = (to: number) => {
+      const from = idxRef.current;
+      if (to < 0 || to >= slides.length || to === from) return;
+      const dir = to > from ? 1 : -1, d = reduced ? 0 : 1;
+      idxRef.current = to;
+      setIdx(to);
+      slides.forEach((sl, i) => i !== from && i !== to && gsap.set(sl, { autoAlpha: 0 }));
+      gsap.to(slides[from], { autoAlpha: 0, x: -dir * 32, duration: 0.28 * d, ease: "power2.in", overwrite: true });
+      gsap.fromTo(slides[to], { autoAlpha: 0, x: dir * 32 }, { autoAlpha: 1, x: 0, duration: 0.5 * d, delay: 0.2 * d, ease: "power2.out", overwrite: true });
+      gsap.to(scene.kb, { proj: to, duration: 0.9 * d, ease: "power2.inOut", overwrite: "auto" });
+    };
+    goRef.current = go;
+
     // ---------- interaction ----------
     const onResize = () => scene.resize();
     const onPointerMove = (e: PointerEvent) => {
@@ -111,7 +121,7 @@ export default function Portfolio() {
       if (scene.hovered) placeTip();
     };
     const onPointerDown = (e: PointerEvent) => {
-      if ((e.target as Element).closest("button,a,#contact,#dog,.project,.footer-inner")) return;
+      if ((e.target as Element).closest("button,a,#contact,#dog,.exp,.footer-inner")) return;
       scene.setPointer(e.clientX, e.clientY, e.pointerType);
       const k = scene.pick();
       if (k) {
@@ -135,6 +145,8 @@ export default function Portfolio() {
         setContactOpen(false);
         toggleDog(false);
       }
+      const t = scene.scroll * SEG.end;
+      if ((e.key === "ArrowRight" || e.key === "ArrowLeft") && !contactRef.current && t > SEG.exp[1] - 0.2 && t < SEG.footer[0] + 0.2) go(idxRef.current + (e.key === "ArrowRight" ? 1 : -1));
       if (e.metaKey || e.ctrlKey || e.altKey || e.key.length !== 1 || contactRef.current) return;
       // Easter egg: type D-O-G anywhere.
       typed = (typed + e.key.toLowerCase()).slice(-3);
@@ -174,9 +186,9 @@ export default function Portfolio() {
         count.textContent = String(Math.round(load.v)).padStart(3, "0");
         bar.style.transform = `scaleX(${load.v / 100})`;
       };
-      gsap.from(".splash-name .ch", { yPercent: 110, duration: 0.8, ease: "expo.out", stagger: 0.035 });
+      gsap.from(".splash-name", { opacity: 0, y: 12, duration: 0.8, ease: "power2.out" });
       gsap.to(load, { v: 90, duration: 1.3, ease: "power2.out", onUpdate: paint });
-      gsap.set(".hero-name .ch", { yPercent: 110 });
+      gsap.set(canvas, { opacity: 0 });
 
       const fontsReady = Promise.race([
         Promise.all([document.fonts.load(`700 100px ${legendFont}`), document.fonts.ready]).catch(() => {}), // a failed font never blocks the intro
@@ -195,13 +207,10 @@ export default function Portfolio() {
             },
           });
           out.to(load, { v: 100, duration: 0.35, ease: "power1.out", onUpdate: paint })
-            .to(".splash-name .ch", { yPercent: -110, duration: 0.6, ease: "expo.in", stagger: 0.025 }, "+=0.1")
-            .to(".splash-meta, #splash .eyebrow", { opacity: 0, duration: 0.3 }, "<")
-            .to("#splash", { clipPath: "inset(0 0 100% 0)", duration: 0.9, ease: "expo.inOut" }, "-=0.15")
-            .to(".hero-name .ch", { yPercent: 0, duration: 1, ease: "expo.out", stagger: 0.03 }, "-=0.45")
-            .from(".hero-meta", { opacity: 0, y: 12, duration: 0.6, immediateRender: false }, "-=0.7")
-            .to(scene.kb, { introY: 0, duration: 1.4, ease: "expo.out" }, "-=1.1")
-            .to(scene.keys, { drop: 0, duration: 0.9, ease: "back.out(1.6)", stagger: { each: 0.018, from: "center", grid: [ROWS, COLS] } }, "-=1.1");
+            .to("#splash", { opacity: 0, duration: 0.8, ease: "power2.inOut" }, "+=0.15")
+            .to(canvas, { opacity: 1, duration: 1.2, ease: "power2.out" }, "<0.1")
+            .to(scene.kb, { intro: 1, duration: 1.6, ease: "power3.out" }, "<")
+            .fromTo(".hero-name, .hero-meta", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.9, ease: "power2.out", stagger: 0.12 }, "-=0.9");
           if (reduced) out.progress(1);
         });
       });
@@ -240,9 +249,8 @@ export default function Portfolio() {
       {!splashDone && (
         <div id="splash" aria-live="polite">
           <div className="splash-inner">
-            <h2 className="splash-name" aria-label="Maksym Sai">
-              <span className="word"><Chars text="Maksym" /></span>
-              <span className="word"><Chars text="Sai" /></span>
+            <h2 className="splash-name">
+              Maksym Sai
             </h2>
             <div className="splash-meta">
               <div className="splash-bar"><i /></div>
@@ -280,7 +288,7 @@ export default function Portfolio() {
         <section className="panel" id="p-hero" data-state="hero" aria-label="Intro">
           <p className="eyebrow hero-meta">{t.eyebrow}</p>
           <h1 className="hero-name" aria-label="Maksym Sai">
-            <span className="line"><Chars text="Maksym" /></span> <span className="line"><Chars text="Sai" /></span>
+            <span className="line">Maksym</span> <span className="line">Sai</span>
           </h1>
           <p className="hero-hint hero-meta">
             <kbd>S</kbd><kbd>A</kbd><kbd>I</kbd>
@@ -334,40 +342,67 @@ export default function Portfolio() {
         </section>
 
         <section className="panel" id="p-exp" data-state="experience" aria-label="Experience">
-          {PROJECTS.map((p, i) => (
-            <article className="project" key={p.title} data-side={i % 2 === 0 ? "right" : "left"} aria-label={p.title}>
-              <div className="meta">
-                <p className="eyebrow">{t.expEyebrow}</p>
-                <span className="count">
-                  0{i + 1} / 0{PROJECTS.length}
-                </span>
-              </div>
-              <figure className="cover">
-                <Image src={p.cover ?? placeholderCover(p, i)} alt={`${p.title} cover`} width={640} height={400} unoptimized />
-              </figure>
-              <h3>{p.title}</h3>
-              <p className="desc">{p.desc}</p>
-              <ul className="chips">
-                {p.tech.map((n) => (
-                  <li key={n}>
-                    <b style={{ "--c": colorOf(n) } as React.CSSProperties} />
-                    {n}
-                  </li>
+          <div
+            className="exp"
+            role="group"
+            aria-roledescription="carousel"
+            aria-label={t.expEyebrow}
+            onPointerDown={(e) => void (swipeX.current = e.clientX)}
+            onPointerUp={(e) => {
+              const dx = e.clientX - swipeX.current;
+              if (Math.abs(dx) > 50) goRef.current(idxRef.current + (dx < 0 ? 1 : -1));
+            }}
+          >
+            <div className="meta">
+              <p className="eyebrow">{t.expEyebrow}</p>
+              <span className="count">
+                0{idx + 1} / 0{PROJECTS.length}
+              </span>
+            </div>
+            <div className="slides" aria-live="polite">
+              {PROJECTS.map((p, i) => (
+                <article className="slide" key={p.title} role="group" aria-roledescription="slide" aria-label={`${i + 1} / ${PROJECTS.length}: ${p.title}`}>
+                  <figure className="cover">
+                    <Image src={p.cover ?? placeholderCover(p, i)} alt={`${p.title} cover`} width={640} height={400} unoptimized draggable={false} />
+                  </figure>
+                  <h3>{p.title}</h3>
+                  <p className="desc">{p.desc}</p>
+                  <ul className="chips">
+                    {p.tech.map((n) => (
+                      <li key={n}>
+                        <b style={{ "--c": colorOf(n) } as React.CSSProperties} />
+                        {n}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="links">
+                    <a className="btn-primary" href={p.live} target="_blank" rel="noopener">
+                      {t.live} ↗
+                    </a>
+                    {p.gh && (
+                      <a className="btn-ghost" href={p.gh} target="_blank" rel="noopener">
+                        GitHub ↗
+                      </a>
+                    )}
+                  </div>
+                  {p.sample && <p className="sample">{t.sample}</p>}
+                </article>
+              ))}
+            </div>
+            <div className="exp-nav">
+              <button type="button" className="btn-ghost" aria-label={t.prev} disabled={idx === 0} onClick={() => goRef.current(idx - 1)}>
+                ←
+              </button>
+              <div className="dots">
+                {PROJECTS.map((p, i) => (
+                  <button key={p.title} type="button" aria-label={p.title} aria-current={i === idx} onClick={() => goRef.current(i)} />
                 ))}
-              </ul>
-              <div className="links">
-                <a className="btn-primary" href={p.live} target="_blank" rel="noopener">
-                  {t.live} ↗
-                </a>
-                {p.gh && (
-                  <a className="btn-ghost" href={p.gh} target="_blank" rel="noopener">
-                    GitHub ↗
-                  </a>
-                )}
               </div>
-              {p.sample && <p className="sample">{t.sample}</p>}
-            </article>
-          ))}
+              <button type="button" className="btn-ghost" aria-label={t.next} disabled={idx === PROJECTS.length - 1} onClick={() => goRef.current(idx + 1)}>
+                →
+              </button>
+            </div>
+          </div>
         </section>
 
         <section className="panel" id="p-footer" data-state="footer" aria-labelledby="footer-title">
@@ -404,7 +439,7 @@ export default function Portfolio() {
           </div>
         </section>
       </main>
-      {/* 7 viewports of scroll + 1 for the last screen; timeline time is measured in viewports. */}
+      {/* 4.5 viewports of scroll + 1 for the last screen; timeline time is measured in viewports. */}
       <div id="track" aria-hidden="true" />
 
       <div id="tip" ref={tipRef} role="status" />

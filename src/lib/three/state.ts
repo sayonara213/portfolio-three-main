@@ -19,14 +19,14 @@ export type KeyboardState = {
   flip2: number;
   /** 0 → 1: Experience mode, unused techs grey and sink */
   exp: number;
-  /** current project, fractional between projects */
+  /** current project slide, fractional while the carousel moves; driven by the carousel, not by scroll */
   proj: number;
   /** RGB rim strength */
   glow: number;
   /** 0 → 1: idle float and pointer parallax. 0 in the hero, which is locked */
   motion: number;
-  /** splash intro offset, animates -7 → 0 */
-  introY: number;
+  /** splash intro zoom, animates 0 → 1 (board scales 0.82 → 1) */
+  intro: number;
 };
 
 export type Pose = Pick<KeyboardState, "x" | "y" | "z" | "rx" | "ry" | "rz" | "s">;

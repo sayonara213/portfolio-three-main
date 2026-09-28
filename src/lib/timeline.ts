@@ -7,28 +7,40 @@ import type { Pose } from "@/lib/three/state";
 gsap.registerPlugin(ScrollTrigger);
 
 /*
- * SCROLL TIMELINE: scrubbed, no snapping. 1 unit of time = 1 viewport of scroll (#track is 800svh).
- * Transitions start the moment you leave a section and are short; the rest is hold.
+ * SCROLL TIMELINE: scrubbed; after a pause it finishes a half-done transition (see `snapTime`); pauses inside a hold never move.
+ * 1 unit of time = 1 viewport of scroll (#track is 550svh). Transitions start the moment you leave a section and are short; the rest is hold.
+ * The Experience carousel is NOT scroll-driven: slides change with buttons, swipe or arrow keys (Portfolio.tsx) and drive `kb.proj`.
  *   0.00        hero (locked)
  *   0.00-0.75   → stack: pose, flip wave white→brand, rim on, stack copy in
  *   0.75-1.50   hold stack
- *   1.50-2.25   → project 1: pose, unused keys grey + pressed, card in
- *   2.75-3.25   → project 2   (hold between)
- *   3.75-4.25   → project 3
- *   4.75-5.25   → project 4
- *   5.75-6.50   → footer: board to background, second flip wave to name caps, scrim + footer copy
- *   6.50-7.00   hold footer
+ *   1.50-2.25   → experience: keyboard to the left, unused keys grey + pressed, carousel in
+ *   2.25-3.25   hold experience (carousel is interactive)
+ *   3.25-4.00   → footer: board to background, second flip wave to name caps, scrim + footer copy
+ *   4.00-4.50   hold footer
  */
 export const SEG = {
   stack: [0, 0.75],
   exp: [1.5, 2.25],
-  proj: [[2.75, 3.25], [3.75, 4.25], [4.75, 5.25]],
-  footer: [5.75, 6.5],
-  end: 7,
+  footer: [3.25, 4],
+  end: 4.5,
 } as const;
 
 /** Resting time of each section. Scroll to label × innerHeight to land on it. */
-export const LABELS = { hero: 0, stack: 1.1, "project-1": 2.5, "project-2": 3.5, "project-3": 4.5, "project-4": 5.5, footer: 6.75 } as const;
+export const LABELS = { hero: 0, stack: 1.1, experience: 2.75, footer: 4.25 } as const;
+
+/** Transitions that finish after a pause (debounced snap). */
+const TRANSITIONS: readonly (readonly [number, number])[] = [SEG.stack, SEG.exp, SEG.footer];
+/** Fraction of a transition you must have crossed (in your scroll direction) for it to complete instead of revert. */
+const COMPLETE_AT = 0.25;
+
+/** Time (viewports) to settle on after a pause: unchanged inside a hold, otherwise the nearest hold edge, biased by direction. */
+function snapTime(t: number, dir: number) {
+  const seg = TRANSITIONS.find(([a, b]) => t > a && t < b);
+  if (!seg) return t;
+  const f = (t - seg[0]) / (seg[1] - seg[0]);
+  const forward = dir >= 0 ? f > COMPLETE_AT : f >= 1 - COMPLETE_AT;
+  return seg[forward ? 1 : 0];
+}
 
 export const BREAKPOINT = 768;
 
@@ -52,8 +64,6 @@ export function buildTimeline({ scene, root, reduced, onProgress }: Options) {
       (["x", "y", "z", "rx", "ry", "rz", "s"] as const).forEach((k) => (o[k] = () => fn(scene.view())[k]));
       return o;
     };
-    const cards = gsap.utils.toArray<HTMLElement>(".project", root);
-    const dx = (i: number) => (cards[i].dataset.side === "left" ? -1 : 1) * 40;
 
     const tl = gsap.timeline({
       defaults: { ease: "none" },
@@ -61,8 +71,17 @@ export function buildTimeline({ scene, root, reduced, onProgress }: Options) {
         trigger: root.querySelector("#track"),
         start: "top top",
         end: "bottom bottom",
-        scrub: reduced ? true : 0.8,
+        scrub: reduced ? true : 0.4,
         invalidateOnRefresh: true,
+        // Debounced: after the scroll goes quiet, finish a half-done transition. Touch waits longer for momentum to end.
+        snap: reduced
+          ? undefined
+          : {
+              snapTo: (p: number, st?: ScrollTrigger) => snapTime(p * SEG.end, st?.direction ?? 1) / SEG.end,
+              delay: matchMedia("(pointer: coarse)").matches ? 0.35 : 0.25,
+              duration: { min: 0.4, max: 0.6 },
+              ease: "power2.out",
+            },
         onUpdate: (st) => onProgress(st.progress),
       },
     });
@@ -79,28 +98,19 @@ export function buildTimeline({ scene, root, reduced, onProgress }: Options) {
       .fromTo("#p-stack", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }, a + 0.45)
       .fromTo(".stack-copy", { y: 40 }, { y: 0, duration: 0.3, ease: "power2.out" }, a + 0.45);
 
-    // stack → project 1
+    // stack → experience
     [a, b] = SEG.exp;
-    tl.to(kb, { ...pose(P.proj(0)), duration: b - a, ease: "power2.inOut" }, a)
-      .fromTo(kb, { exp: 0, proj: 0 }, { exp: 1, duration: 0.5 }, a + 0.1)
+    tl.to(kb, { ...pose(P.exp), duration: b - a, ease: "power2.inOut" }, a)
+      .fromTo(kb, { exp: 0 }, { exp: 1, duration: 0.5 }, a + 0.1)
       .to("#p-stack", { autoAlpha: 0, duration: 0.25 }, a)
-      .fromTo(cards[0], { autoAlpha: 0, x: dx(0) }, { autoAlpha: 1, x: 0, duration: 0.3, ease: "power2.out" }, b - 0.3);
+      .fromTo(".exp", { autoAlpha: 0, x: 40 }, { autoAlpha: 1, x: 0, duration: 0.3, ease: "power2.out" }, b - 0.3);
 
-    // project i-1 → project i
-    SEG.proj.forEach(([a, b], n) => {
-      const i = n + 1;
-      tl.to(kb, { ...pose(P.proj(i)), duration: b - a, ease: "power2.inOut" }, a)
-        .to(kb, { proj: i, duration: b - a, ease: "power1.inOut" }, a)
-        .to(cards[i - 1], { autoAlpha: 0, x: dx(i - 1), duration: 0.2 }, a)
-        .fromTo(cards[i], { autoAlpha: 0, x: dx(i) }, { autoAlpha: 1, x: 0, duration: 0.25, ease: "power2.out" }, b - 0.25);
-    });
-
-    // last project → footer
+    // experience → footer
     [a, b] = SEG.footer;
     tl.to(kb, { ...pose(P.footer), duration: b - a, ease: "power2.inOut" }, a)
       .to(kb, { exp: 0, glow: 0.45, duration: 0.4 }, a)
       .fromTo(kb, { flip2: 0 }, { flip2: 1, duration: 0.7 }, a + 0.03)
-      .to(cards[cards.length - 1], { autoAlpha: 0, x: dx(cards.length - 1), duration: 0.2 }, a)
+      .to(".exp", { autoAlpha: 0, x: 40, duration: 0.2 }, a)
       .fromTo("#scrim", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.4 }, a + 0.25)
       .fromTo("#p-footer", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }, a + 0.4)
       .fromTo(".footer-inner", { y: 40 }, { y: 0, duration: 0.3, ease: "power2.out" }, a + 0.4)
