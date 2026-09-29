@@ -38,14 +38,17 @@ a{color:inherit}
 .splash-count{font-variant-numeric:tabular-nums;color:var(--paper);min-width:3ch;text-align:right}
 
 /* ---------- Header ---------- */
-.site-header{position:fixed;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:calc(14px + env(safe-area-inset-top,0px)) var(--gutter) 14px}
-.brand{font-family:var(--f-display);font-weight:600;font-size:14px;letter-spacing:-.01em;text-decoration:none;white-space:nowrap}
-.brand span{font-family:var(--f-mono);font-weight:400;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-left:8px}
-.header-actions{display:flex;align-items:center;gap:10px}
+/* Everything in the header sizes from --hs (14px on desktop, down to 11px at 320px) so it never wraps and never pushes past the viewport. */
+.site-header{--hs:clamp(11px,8px + .9vw,14px);position:fixed;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:clamp(6px,2vw,12px);padding:calc(14px + env(safe-area-inset-top,0px)) var(--gutter) 14px;font-size:var(--hs);white-space:nowrap;pointer-events:none}
+.brand,.header-actions{pointer-events:auto}
+.brand{min-width:0;overflow:hidden;text-overflow:ellipsis;font-family:var(--f-display);font-weight:600;font-size:1em;letter-spacing:-.01em;text-decoration:none}
+.brand span{font-family:var(--f-mono);font-weight:400;font-size:.79em;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-left:.6em}
+.header-actions{flex:none;display:flex;align-items:center;gap:clamp(6px,2vw,10px)}
 .lang{display:flex;border:1px solid var(--line);border-radius:999px;padding:3px;background:rgba(21,21,23,.6);backdrop-filter:blur(8px)}
-.lang button{background:none;border:0;border-radius:999px;padding:5px 10px;font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;color:var(--mute);cursor:pointer}
+.lang button{background:none;border:0;border-radius:999px;padding:.45em .9em;font-family:var(--f-mono);font-size:.79em;letter-spacing:.08em;color:var(--mute);cursor:pointer}
 .lang button[aria-pressed="true"]{background:var(--paper);color:var(--ink)}
 .btn-contact,.btn-primary{position:relative;border:0;border-radius:999px;padding:9px 18px;background:var(--paper);color:var(--ink);font-family:var(--f-display);font-weight:600;font-size:13px;cursor:pointer;isolation:isolate;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
+.site-header .btn-contact{padding:.7em 1.4em;font-size:.93em}
 .btn-contact::before,.btn-primary::before{content:"";position:absolute;inset:-2px;border-radius:inherit;background:var(--rainbow);z-index:-1;opacity:0;transition:opacity .3s}
 .btn-contact:hover::before,.btn-primary:hover::before{opacity:1}
 .btn-ghost{border:1px solid var(--line);border-radius:999px;padding:8px 16px;background:rgba(21,21,23,.6);font-family:var(--f-display);font-weight:500;font-size:13px;text-decoration:none;cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:border-color .2s}
@@ -60,7 +63,11 @@ a{color:inherit}
 
 /* Hero sits under the canvas so the keyboard may overlap the name */
 #p-hero{z-index:1;visibility:visible;opacity:1;display:flex;flex-direction:column;align-items:center;padding:calc(90px + env(safe-area-inset-top,0px)) var(--gutter) 28px;text-align:center}
-.hero-name{font-family:var(--f-display);font-weight:800;font-size:clamp(3rem,10.5vw,10.5rem);line-height:.9;letter-spacing:-.045em;margin:.18em 0 0;text-transform:uppercase;text-wrap:balance}
+/* Name width in em of the widest line (desktop: both words on one line; mobile: one word per line), per language. Font size = available width / that, so the name never wraps or overflows. Tune these if a font changes. */
+:root{--nw:7.6;--nwm:5.5}
+html[lang="uk"]{--nw:8.4;--nwm:5.6}
+html[lang="ja"]{--nw:6.6;--nwm:4.2}
+.hero-name{font-family:var(--f-display);font-weight:800;font-size:clamp(2rem,min(calc(.8*(100vw - 2*var(--gutter))/var(--nw)),21svh),8.4rem);line-height:.9;letter-spacing:-.045em;margin:.18em 0 0;text-transform:uppercase;white-space:nowrap}
 .hero-name .line{display:inline-block;vertical-align:top}
 .hero-hint{margin-top:auto;display:flex;align-items:center;gap:10px;font-family:var(--f-mono);font-size:12px;color:var(--mute);letter-spacing:.06em}
 kbd{display:inline-grid;place-items:center;min-width:26px;height:26px;padding:0 6px;border-radius:7px;background:var(--paper);color:var(--ink);font-family:var(--f-mono);font-size:12px;box-shadow:0 3px 0 #9a9aa2,0 4px 10px rgba(0,0,0,.5)}
@@ -93,7 +100,7 @@ kbd.rgb{background:var(--rainbow);color:var(--ink)}
 .slides{display:grid}
 /* slides stack in one grid cell; GSAP fades them, the first is visible before it runs */
 .slide{grid-area:1/1;display:grid;gap:14px;align-content:start;visibility:hidden;opacity:0}
-.slide:first-child{visibility:visible;opacity:1}
+.slide:first-child{visibility:inherit;opacity:1}
 .slide .cover{margin:0;border-radius:14px;overflow:hidden;border:1px solid var(--line);aspect-ratio:16/10;background:var(--ink-2)}
 .slide .cover img{display:block;width:100%;height:100%;object-fit:cover}
 .slide h3{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(1.6rem,2.8vw,2.4rem);letter-spacing:-.03em;line-height:1.05}
@@ -148,10 +155,8 @@ kbd.rgb{background:var(--rainbow);color:var(--ink)}
 /* ---------- Mobile ---------- */
 @media (max-width:767px){
   .brand span{display:none}
-  .lang button{padding:5px 8px}
-  .btn-contact{padding:8px 14px}
   #p-hero{padding-top:calc(96px + env(safe-area-inset-top,0px))}
-  .hero-name{font-size:clamp(3rem,17vw,6rem)}
+  .hero-name{font-size:clamp(2rem,min(calc(.8*(100vw - 2*var(--gutter))/var(--nwm)),13svh),4.8rem)}
   .hero-name .line{display:block}
   .hero-hint kbd:not(.rgb){display:none}
   #p-stack{align-items:flex-end;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}

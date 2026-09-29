@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { GLYPHS, HERO_ACTIONS, type HeroAction } from "@/lib/content/glyphs";
 import { ICONS } from "@/lib/content/icons";
 import { COLS, HERO_ROWS, NAME_ROWS, ROWS, TECH, inkFor } from "@/lib/content/tech";
 import type { KeyboardState } from "./state";
@@ -21,6 +22,8 @@ export type Key = {
   r: number;
   c: number;
   hero: string;
+  /** Function key in the hero state (MacBook-style glyph, clickable) */
+  action?: HeroAction;
   nameCh: string;
   slug: string;
   name: string;
@@ -90,6 +93,9 @@ export class KeyboardScene {
   scroll = 0;
   hovered: Key | null = null;
   onHoverChange?: (k: Key | null) => void;
+  /** Shown in the top-right corner of the globe key */
+  private langLabel = "EN";
+  private texturesBuilt = false;
 
   private scene = new THREE.Scene();
   private board = new THREE.Group();
@@ -262,7 +268,7 @@ export class KeyboardScene {
         pivot.add(legend);
         this.board.add(pivot);
         const k: Key = {
-          i: r * COLS + c, r, c, hero, nameCh, ...t,
+          i: r * COLS + c, r, c, hero, action: HERO_ACTIONS[r * COLS + c], nameCh, ...t,
           techColor: new THREE.Color(t.color), footColor: nameCh ? WHITE : GRAPHITE,
           pivot, cap, mat, legend, legendMat, state: null, tex: {}, hover: 0, press: 0,
         };
@@ -297,10 +303,56 @@ export class KeyboardScene {
       g.fill(new Path2D(ICONS[slug]));
     });
   }
+  /**
+   * MacBook-style function key: a line glyph centred like the F-row icons.
+   * The globe key is laid out like a Mac corner-legend key: globe bottom-left, current language top-right.
+   */
+  private glyphTex(action: HeroAction) {
+    return this.canvasTex((g) => {
+      const gl = GLYPHS[action], ink = "#141416";
+      const globe = action === "lang";
+      const size = (globe ? 108 : 136) * (gl.scale ?? 1);
+      const [cx, cy] = globe ? [88, 168] : [128, 128];
+      g.save();
+      g.translate(cx - size / 2, cy - size / 2);
+      g.scale(size / 24, size / 24);
+      g.strokeStyle = g.fillStyle = ink;
+      g.lineWidth = 1.7;
+      g.lineCap = g.lineJoin = "round";
+      if (gl.stroke) g.stroke(new Path2D(gl.stroke));
+      if (gl.fill) g.fill(new Path2D(gl.fill));
+      g.restore();
+      if (globe) {
+        g.fillStyle = ink; g.textAlign = "right"; g.textBaseline = "alphabetic";
+        g.font = `600 ${this.langLabel.length > 2 ? 46 : 60}px -apple-system, "SF Pro Text", system-ui, sans-serif`;
+        g.fillText(this.langLabel, 226, 88);
+      }
+    });
+  }
+  private heroTex(k: Key) {
+    return k.action ? this.glyphTex(k.action) : k.hero ? this.letterTex(k.hero) : null;
+  }
+  /** Updates the language shown on the globe key. Safe to call before the textures exist. */
+  setLangLabel(label: string) {
+    if (label === this.langLabel) return;
+    this.langLabel = label;
+    if (!this.texturesBuilt) return;
+    for (const k of this.keys) {
+      if (k.action !== "lang") continue;
+      const old = k.tex.hero;
+      k.tex.hero = this.heroTex(k);
+      if (old) {
+        old.dispose();
+        this.disposables = this.disposables.filter((d) => d !== old);
+      }
+      k.state = null; // the render loop re-applies the legend next frame
+    }
+  }
   /** Call once the display font has loaded, so letters render in Unbounded. */
   buildTextures() {
+    this.texturesBuilt = true;
     for (const k of this.keys) {
-      k.tex = { hero: k.hero ? this.letterTex(k.hero) : null, tech: this.logoTex(k.slug, inkFor(k.color)), name: k.nameCh ? this.letterTex(k.nameCh) : null };
+      k.tex = { hero: this.heroTex(k), tech: this.logoTex(k.slug, inkFor(k.color)), name: k.nameCh ? this.letterTex(k.nameCh) : null };
       k.state = null;
       this.setLegend(k, "hero");
     }
@@ -331,10 +383,15 @@ export class KeyboardScene {
     this.ndc.set((clientX / window.innerWidth) * 2 - 1, -(clientY / window.innerHeight) * 2 + 1);
   }
 
-  pick(): Key | null {
-    this.ray.setFromCamera(this.ndc, this.camera);
+  pick(ndc = this.ndc): Key | null {
+    this.ray.setFromCamera(ndc, this.camera);
     const hit = this.ray.intersectObjects(this.caps, false)[0];
     return hit ? (hit.object.userData.k as Key) : null;
+  }
+
+  /** Cap under a screen point, without moving the hover pointer. */
+  pickAt(clientX: number, clientY: number) {
+    return this.pick(new THREE.Vector2((clientX / window.innerWidth) * 2 - 1, -(clientY / window.innerHeight) * 2 + 1));
   }
 
   /** Presses every cap whose visible legend matches the typed letter. */

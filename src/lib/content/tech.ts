@@ -20,7 +20,7 @@ export const TECH: Tech[][] = [
     { slug: "html5", name: "HTML", color: "#E34F26", note: "Semantic, accessible markup" },
     { slug: "css", name: "CSS", color: "#663399", note: "Responsive layouts and motion" },
     { slug: "opengl", name: "GLSL", color: "#5586A4", note: "Custom shaders for 3D scenes" },
-    { slug: "react", name: "React", color: "#61DAFB", note: "Main UI library for 4+ years" },
+    { slug: "react", name: "React", color: "#61DAFB", note: "Main UI library" },
     { slug: "nextdotjs", name: "Next.js", color: "#F3F3F4", note: "E-commerce build with SEO and a11y focus" },
     { slug: "vuedotjs", name: "Vue.js", color: "#42B883", note: "Vue.js interfaces" },
   ],
@@ -38,7 +38,7 @@ export const TECH: Tech[][] = [
     { slug: "nodedotjs", name: "Node.js", color: "#5FA04E", note: "APIs and services" },
     { slug: "express", name: "Express.js", color: "#3A3A40", note: "REST API design" },
     { slug: "nestjs", name: "NestJS", color: "#E0234E", note: "Backend services and CMS APIs" },
-    { slug: "postgresql", name: "PostgreSQL", color: "#4169E1", note: "Relational data for e-commerce" },
+    { slug: "postgresql", name: "PostgreSQL", color: "#4169E1", note: "Relational data for FFW and e-commerce" },
     { slug: "redis", name: "Redis", color: "#FF4438", note: "Caching layer" },
     { slug: "amazonaws", name: "AWS", color: "#232F3E", note: "Payments, assets and cloud services" },
     { slug: "awslambda", name: "AWS Lambda", color: "#FF9900", note: "Serverless functions" },
@@ -57,7 +57,7 @@ export const TECH: Tech[][] = [
 ];
 
 /** Legends for the letter states; a space is a blank cap. */
-export const HERO_ROWS = ["        ", "SOFTWARE", "ENGINEER", "        "];
+export const HERO_ROWS = ["        ", "CREATIVE", "ENGINEER", "        "];
 export const NAME_ROWS = ["        ", " MAKSYM ", "  SAI   ", "        "];
 
 export const TECH_FLAT = TECH.flat();

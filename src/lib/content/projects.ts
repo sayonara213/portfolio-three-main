@@ -1,10 +1,15 @@
-// Experience section. These four are placeholders: replace title, desc, links, tech and cover.
+import type { Lang } from "./i18n";
+
+// Experience section. Entries with `sample: true` are still placeholders: replace title, desc, links, tech and cover.
 // `tech` names must match TECH names exactly; they decide which keys stay lit for the project.
 
 export type Project = {
   title: string;
   desc: string;
-  live: string;
+  /** Translations of `desc`; English falls back to `desc` */
+  descI18n?: Partial<Record<Lang, string>>;
+  /** Live site; omit when there is no public URL (the button is hidden) */
+  live?: string;
   gh?: string;
   /** Image URL. Placeholders use a generated SVG mock; real ones go in /public/projects. */
   cover?: string;
@@ -16,39 +21,43 @@ export type Project = {
 
 export const PROJECTS: Project[] = [
   {
-    title: "Nebula Garage",
-    desc: "3D car configurator with real-time paint, rims and studio lighting presets.",
-    live: "https://example.com",
-    gh: "https://github.com/sayonara213",
-    accent: ["#ff5d6c", "#8c6cff"],
-    tech: ["TypeScript", "React", "Next.js", "GLSL", "Three.js / R3F", "WebGL", "Blender", "AWS S3"],
-    sample: true,
+    title: "Fast ForWorld",
+    desc: "Lamborghini's Web3 platform: a real-time 3D car configurator, on-chain NFT collectibles and a GPU render service that turns configurations into assets.",
+    descI18n: {
+      uk: "Web3-платформа Lamborghini: 3D-конфігуратор авто в реальному часі, ончейн NFT-колекції та GPU-сервіс рендерингу, що перетворює конфігурації на ресурси.",
+      ja: "ランボルギーニのWeb3プラットフォーム。リアルタイム3Dカーコンフィギュレーター、オンチェーンNFTコレクティブル、構成をアセットに変換するGPUレンダリングサービス。",
+    },
+    live: "https://fastforworld.lamborghini.com",
+    cover: "/projects/fast-forworld.webp",
+    accent: ["#4fb81c", "#b8b8b8"],
+    tech: [
+      "TypeScript", "React", "Three.js / R3F", "WebGL", "Blender", "Web3 / NFT",
+      "Node.js", "Express.js", "PostgreSQL", "Redis", "Docker", "AWS", "AWS S3",
+    ],
   },
   {
-    title: "Chainlens",
-    desc: "API and dashboard that normalises on-chain NFT data for a marketplace.",
-    live: "https://example.com",
-    accent: ["#627EEA", "#5ee08a"],
-    tech: ["TypeScript", "React", "React Query", "Web3 / NFT", "Node.js", "NestJS", "PostgreSQL", "Redis", "AWS", "AWS Lambda"],
-    sample: true,
+    title: "This portfolio",
+    desc: "A Three.js keyboard that types, flips and lights up my stack, choreographed with GSAP scroll timelines in Next.js.",
+    descI18n: {
+      uk: "Клавіатура на Three.js, яка друкує, перевертається й підсвічує мій стек; хореографія — GSAP-таймлайни скролу в Next.js.",
+      ja: "入力し、反転し、私のスタックを光らせるThree.js製キーボード。Next.jsでGSAPのスクロールタイムラインを使って演出しています。",
+    },
+    gh: "https://github.com/sayonara213/portfolio-three",
+    cover: "/projects/this-portfolio.webp",
+    accent: ["#8c6cff", "#4fb8ff"],
+    tech: ["HTML", "CSS", "TypeScript", "React", "Next.js", "Three.js / R3F", "WebGL", "GLSL", "Git", "GitHub", "Claude Code"],
   },
   {
-    title: "Stitch & Co",
-    desc: "Accessible fashion storefront with server rendering, search and checkout.",
-    live: "https://example.com",
-    gh: "https://github.com/sayonara213",
-    accent: ["#ffa94d", "#ff6ad5"],
-    tech: ["HTML", "CSS", "TypeScript", "React", "Next.js", "NestJS", "PostgreSQL", "Docker", "AWS S3"],
-    sample: true,
-  },
-  {
-    title: "Pocket CMS",
-    desc: "Content dashboard with a companion iOS and Android app.",
-    live: "https://example.com",
-    gh: "https://github.com/sayonara213",
-    accent: ["#4fb8ff", "#42B883"],
-    tech: ["JavaScript", "TypeScript", "React", "React Native", "Redux Toolkit", "Node.js", "Express.js", "Git", "GitHub"],
-    sample: true,
+    title: "Girls Practice Wear",
+    desc: "Made-to-order dancewear storefront: server-rendered catalogue, cart and checkout on a Node API.",
+    descI18n: {
+      uk: "Магазин одягу для танців на замовлення: серверний рендеринг каталогу, кошик і оформлення замовлення на Node API.",
+      ja: "オーダーメイドのダンスウェアのオンラインストア。サーバーレンダリングのカタログ、カート、決済をNode APIで構築。",
+    },
+    live: "https://girlspracticewear.com",
+    cover: "/projects/girls-practice-wear.webp",
+    accent: ["#3b0a14", "#b8b8b8"],
+    tech: ["HTML", "CSS", "TypeScript", "React", "Next.js", "Node.js", "Express.js", "NestJS", "PostgreSQL", "Redis", "Docker", "AWS", "AWS S3", "Git"],
   },
 ];
 
