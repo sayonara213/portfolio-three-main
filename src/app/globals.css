@@ -210,4 +210,6 @@ kbd.rgb{background:var(--rainbow);color:var(--ink)}
   .footer-inner{gap:14px}
 }
 html[lang="ja"] .hero-name,html[lang="ja"] h2,html[lang="ja"] .footer-title{letter-spacing:-.01em}
+/* Latin caps have no descenders or accents, so English can stack tighter than Cyrillic (Й) and Japanese */
+html[lang="en"] .hero-name{line-height:1}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
