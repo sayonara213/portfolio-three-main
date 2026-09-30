@@ -10,7 +10,6 @@ export type Project = {
   descI18n?: Partial<Record<Lang, string>>;
   /** Live site; omit when there is no public URL (the button is hidden) */
   live?: string;
-  gh?: string;
   /** Image URL. Placeholders use a generated SVG mock; real ones go in /public/projects. */
   cover?: string;
   /** Accent colours for the placeholder cover */
@@ -42,7 +41,6 @@ export const PROJECTS: Project[] = [
       uk: "Клавіатура на Three.js, яка друкує, перевертається й підсвічує мій стек; хореографія — GSAP-таймлайни скролу в Next.js.",
       ja: "入力し、反転し、私のスタックを光らせるThree.js製キーボード。Next.jsでGSAPのスクロールタイムラインを使って演出しています。",
     },
-    gh: "https://github.com/sayonara213/portfolio-three",
     cover: "/projects/this-portfolio.webp",
     accent: ["#8c6cff", "#4fb8ff"],
     tech: ["HTML", "CSS", "TypeScript", "React", "Next.js", "Three.js / R3F", "WebGL", "GLSL", "Git", "GitHub", "Claude Code"],

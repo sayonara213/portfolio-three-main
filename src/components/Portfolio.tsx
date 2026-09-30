@@ -543,18 +543,13 @@ export default function Portfolio() {
                       </li>
                     ))}
                   </ul>
-                  <div className="links">
-                    {p.live && (
+                  {p.live && (
+                    <div className="links">
                       <a className="btn-primary" href={p.live} target="_blank" rel="noopener">
                         {t.live} <span aria-hidden="true">↗</span>
                       </a>
-                    )}
-                    {p.gh && (
-                      <a className={p.live ? "btn-ghost" : "btn-primary"} href={p.gh} target="_blank" rel="noopener">
-                        GitHub <span aria-hidden="true">↗</span>
-                      </a>
-                    )}
-                  </div>
+                    </div>
+                  )}
                   {p.sample && <p className="sample">{t.sample}</p>}
                 </article>
               ))}
