@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Caveat, JetBrains_Mono, Onest, Unbounded, Zen_Kaku_Gothic_New } from "next/font/google";
 import Script from "next/script";
 import { GA_ID } from "@/lib/analytics";
-import { DESCRIPTION, GITHUB, JOB_TITLE, KEYWORDS, LINKEDIN, NAME, NAME_ALT, SITE_URL, TITLE } from "@/lib/site";
+import { DESCRIPTION, GITHUB, JOB_TITLE, KEYWORDS, LINKEDIN, NAME, NAME_ALT, SITE_URL, SKILLS, TITLE } from "@/lib/site";
 import "./globals.css";
 
 // Display, body and mono faces. Zen Kaku Gothic New covers Japanese; Caveat is the dog caption.
@@ -57,7 +57,7 @@ const jsonLd = {
       url: SITE_URL,
       image: `${SITE_URL}/opengraph-image.png`,
       sameAs: [GITHUB, LINKEDIN],
-      knowsAbout: KEYWORDS.slice(4),
+      knowsAbout: SKILLS.filter((s) => !/developer|portfolio/.test(s)),
       knowsLanguage: ["en", "uk", "ja"],
     },
     {

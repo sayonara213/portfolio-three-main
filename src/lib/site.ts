@@ -11,16 +11,15 @@ export const SITE_URL = (
     : "http://localhost:3000")
 ).replace(/\/$/, "");
 
-export const NAME = "Maksym Sai";
-export const NAME_ALT = ["Максим Сай", "サイ マクシム"];
+export const NAME = "Max Sai";
+/** Other spellings people may search for, including the full first name. */
+export const NAME_ALT = ["Maksym Sai", "Макс Сай", "Максим Сай", "サイ マックス", "サイ マクシム"];
 export const JOB_TITLE = "Fullstack developer";
-export const TITLE = "Maksym Sai - Fullstack Developer Portfolio";
+export const TITLE = "Max Sai - Fullstack Developer Portfolio";
 export const DESCRIPTION =
-  "Maksym Sai, fullstack developer: interactive 3D frontends (Three.js, WebGL, React, Next.js), backend services (Node.js, NestJS) and cloud infrastructure (AWS). Explore the portfolio through a 3D keyboard.";
-export const KEYWORDS = [
-  "Maksym Sai",
-  "Максим Сай",
-  "サイ マクシム",
+  "Max Sai, fullstack developer: interactive 3D frontends (Three.js, WebGL, React, Next.js), backend services (Node.js, NestJS) and cloud infrastructure (AWS). Explore the portfolio through a 3D keyboard.";
+/** Skills for search and structured data (`knowsAbout`). */
+export const SKILLS = [
   "fullstack developer",
   "portfolio",
   "creative developer",
@@ -37,5 +36,6 @@ export const KEYWORDS = [
   "frontend developer",
   "backend developer",
 ];
+export const KEYWORDS = [NAME, ...NAME_ALT, ...SKILLS];
 export const GITHUB = "https://github.com/sayonara213";
 export const LINKEDIN = "https://linkedin.com/in/maksym-sai";

@@ -38,16 +38,16 @@ const en = {
   close: "Close",
   splash: "Loading 3D scene",
   cats: ["Languages & web", "Frontend & 3D", "Backend & cloud", "Tools & AI"],
-  metaTitle: "Maksym Sai | Fullstack Developer Portfolio",
+  metaTitle: "Max Sai | Fullstack Developer Portfolio",
   metaDesc:
-    "Maksym Sai, fullstack developer: interactive 3D frontends (Three.js, WebGL, React, Next.js), backend services (Node.js, NestJS) and cloud infrastructure (AWS). Explore the portfolio through a 3D keyboard.",
+    "Max Sai, fullstack developer: interactive 3D frontends (Three.js, WebGL, React, Next.js), backend services (Node.js, NestJS) and cloud infrastructure (AWS). Explore the portfolio through a 3D keyboard.",
   aria: {
     lang: "Language",
     intro: "Intro",
     exp: "Experience",
     egg: "Easter egg",
   },
-  dogAlt: "Maksym's small white dog lying on its back, one paw up",
+  dogAlt: "Max's small white dog lying on its back, one paw up",
   /** Per-tech notes by TECH name; English lives next to the keys in tech.ts, so this stays empty */
   notes: {} as Record<string, string>,
   keys: {
@@ -99,11 +99,11 @@ export const I18N: Record<Lang, Dict> = {
       "Бекенд і хмара",
       "Інструменти та ШІ",
     ],
-    metaTitle: "Максим Сай | портфоліо Fullstack-розробника",
+    metaTitle: "Макс Сай | портфоліо Fullstack-розробника",
     metaDesc:
-      "Максим Сай, fullstack-розробник: інтерактивні 3D-інтерфейси (Three.js, WebGL, React, Next.js), бекенд-сервіси (Node.js, NestJS) та хмарна інфраструктура (AWS). Портфоліо у вигляді 3D-клавіатури.",
+      "Макс Сай, fullstack-розробник: інтерактивні 3D-інтерфейси (Three.js, WebGL, React, Next.js), бекенд-сервіси (Node.js, NestJS) та хмарна інфраструктура (AWS). Портфоліо у вигляді 3D-клавіатури.",
     aria: { lang: "Мова", intro: "Вступ", exp: "Досвід", egg: "Пасхалка" },
-    dogAlt: "Маленький білий пес Максима лежить на спині, підняв одну лапу",
+    dogAlt: "Маленький білий пес Макса лежить на спині, підняв одну лапу",
     notes: {
       JavaScript: "Основна мова в усіх проєктах",
       TypeScript: "Стандарт для фронтенду й бекенду",
@@ -182,16 +182,16 @@ export const I18N: Record<Lang, Dict> = {
       "バックエンドとクラウド",
       "ツールとAI",
     ],
-    metaTitle: "サイ マクシム - フルスタック開発者ポートフォリオ",
+    metaTitle: "サイ マックス - フルスタック開発者ポートフォリオ",
     metaDesc:
-      "サイ マクシム、フルスタック開発者。インタラクティブな3Dフロントエンド（Three.js、WebGL、React、Next.js）、バックエンド（Node.js、NestJS）、クラウド（AWS）。3Dキーボードで巡るポートフォリオ。",
+      "サイ マックス、フルスタック開発者。インタラクティブな3Dフロントエンド（Three.js、WebGL、React、Next.js）、バックエンド（Node.js、NestJS）、クラウド（AWS）。3Dキーボードで巡るポートフォリオ。",
     aria: {
       lang: "言語",
       intro: "イントロ",
       exp: "実績",
       egg: "イースターエッグ",
     },
-    dogAlt: "仰向けに寝て片方の前足を上げている、マクシムの小さな白い犬",
+    dogAlt: "仰向けに寝て片方の前足を上げている、マックスの小さな白い犬",
     notes: {
       JavaScript: "すべてのプロジェクトで使う中核言語",
       TypeScript: "フロントエンドとバックエンドの標準",
