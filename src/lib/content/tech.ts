@@ -58,7 +58,7 @@ export const TECH: Tech[][] = [
 
 /** Legends for the letter states; a space is a blank cap. */
 export const HERO_ROWS = ["        ", "CREATIVE", "ENGINEER", "        "];
-export const NAME_ROWS = ["        ", " MAKSYM ", "  SAI   ", "        "];
+export const NAME_ROWS = ["        ", "  MAX   ", "  SAI   ", "        "];
 
 export const TECH_FLAT = TECH.flat();
 export const colorOf = (name: string) => TECH_FLAT.find((t) => t.name === name)?.color ?? "#888888";

@@ -66,10 +66,10 @@ a{color:inherit}
 /* Hero sits under the canvas so the keyboard may overlap the name */
 #p-hero{z-index:1;visibility:visible;opacity:1;display:flex;flex-direction:column;align-items:center;padding:calc(90px + env(safe-area-inset-top,0px)) var(--gutter) calc(28px + env(safe-area-inset-bottom,0px));text-align:center}
 /* Name width in em of the widest line (desktop: both words on one line; mobile: one word per line), per language. Font size = available width / that, so the name never wraps or overflows. Tune these if a font changes. */
-:root{--nw:7.6;--nwm:5.5}
-html[lang="uk"]{--nw:8.4;--nwm:5.6}
+:root{--nw:5.1;--nwm:2.8}
+html[lang="uk"]{--nw:6.3;--nwm:3.5}
 html[lang="ja"]{--nw:6.6;--nwm:4.2}
-.hero-name{font-family:var(--f-display);font-weight:800;font-size:clamp(2.3rem,min(calc(.92*(100vw - 2*var(--gutter))/var(--nw)),24svh),9.66rem);line-height:1;letter-spacing:-.045em;margin:.18em 0 0;text-transform:uppercase;white-space:nowrap}
+.hero-name{font-family:var(--f-display);font-weight:800;font-size:clamp(1.84rem,min(calc(.736*(100vw - 2*var(--gutter))/var(--nw)),22.4svh),10.4rem);line-height:1.15;letter-spacing:-.045em;margin:.18em 0 0;text-transform:uppercase;white-space:nowrap}
 .hero-name .line{display:inline-block;vertical-align:top}
 .hero-hint{margin-top:auto;display:flex;align-items:center;gap:10px;font-family:var(--f-mono);font-size:12px;color:var(--mute);letter-spacing:.06em}
 kbd{display:inline-grid;place-items:center;min-width:26px;height:26px;padding:0 6px;border-radius:7px;background:var(--paper);color:var(--ink);font-family:var(--f-mono);font-size:12px;box-shadow:0 3px 0 #9a9aa2,0 4px 10px rgba(0,0,0,.5)}
@@ -160,7 +160,7 @@ kbd.rgb{background:var(--rainbow);color:var(--ink)}
 @media (max-width:767px){
   .brand span{display:none}
   #p-hero{padding-top:calc(96px + env(safe-area-inset-top,0px))}
-  .hero-name{font-size:clamp(2.3rem,min(calc(.92*(100vw - 2*var(--gutter))/var(--nwm)),15svh),5.52rem)}
+  .hero-name{font-size:clamp(1.66rem,min(calc(.662*(100vw - 2*var(--gutter))/var(--nwm)),11.5svh),5.4rem)}
   .hero-name .line{display:block}
   .hero-hint kbd:not(.rgb){display:none}
   #p-stack{align-items:flex-end;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}

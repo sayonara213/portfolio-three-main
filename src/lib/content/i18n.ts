@@ -9,7 +9,7 @@ export const LANGS: { id: Lang; label: string }[] = [
 const en = {
   brand: "portfolio",
   /** Name in reading order: first line and second line of the hero, joined by a space elsewhere */
-  nameA: "Maksym",
+  nameA: "Max",
   nameB: "Sai",
   contact: "Contact",
   eyebrow: "Fullstack developer",
@@ -65,7 +65,7 @@ export const I18N: Record<Lang, Dict> = {
   en,
   uk: {
     brand: "портфоліо",
-    nameA: "Максим",
+    nameA: "Макс",
     nameB: "Сай",
     contact: "Контакт",
     eyebrow: "Fullstack-розробник",
@@ -149,7 +149,7 @@ export const I18N: Record<Lang, Dict> = {
   ja: {
     brand: "ポートフォリオ",
     nameA: "サイ",
-    nameB: "マクシム",
+    nameB: "マックス",
     contact: "連絡先",
     eyebrow: "フルスタック開発者",
     hint: "キーボードで入力、またはスクロール",
