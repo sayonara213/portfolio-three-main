@@ -42,6 +42,9 @@ export type Key = {
   press: number;
 };
 
+/** Colours in each project's rim palette; the rim cycles through them around the case. */
+const PAL = 8;
+
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 const smooth = (t: number) => t * t * (3 - 2 * t);
 
@@ -101,19 +104,29 @@ export class KeyboardScene {
   private board = new THREE.Group();
   private sun: THREE.DirectionalLight;
   private glowMat: THREE.ShaderMaterial;
+  /** Per project: PAL rim colours taken from the keys it uses (see buildPalettes) */
+  private palettes: THREE.Color[][] = [];
   private stars: THREE.Points;
   private caps: THREE.Mesh[] = [];
   private ray = new THREE.Raycaster();
   private ndc = new THREE.Vector2(9, 9);
   private pointerType = "mouse";
+  /** Pointer moved since the last hover raycast */
+  private pointerDirty = false;
+  private frameNo = 0;
+  /** Drawing-buffer size in CSS px; see resize() */
+  private w = 1;
+  private h = 1;
   private par = { x: 0, y: 0 };
   private timer = new THREE.Timer();
   private raf = 0;
   private disposables: { dispose(): void }[] = [];
 
   constructor(canvas: HTMLCanvasElement, private opts: SceneOptions) {
-    const r = (this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true }));
-    r.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // Phones and tablets: fewer pixels and a smaller shadow map. They're the ones that drop frames.
+    const lite = matchMedia("(pointer: coarse)").matches || window.innerWidth < 768;
+    const r = (this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" }));
+    r.setPixelRatio(Math.min(window.devicePixelRatio, lite ? 1.5 : 2));
     r.toneMapping = THREE.NoToneMapping; // ACES desaturates the brand colours; keep them true
     r.shadowMap.enabled = true;
     r.shadowMap.type = THREE.PCFShadowMap;
@@ -125,7 +138,7 @@ export class KeyboardScene {
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0x0a0a0a, 0.2 * Math.PI));
     const sun = (this.sun = new THREE.DirectionalLight(0xffffff, 1.35 * Math.PI));
     sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.mapSize.setScalar(lite ? 1024 : 2048);
     Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12, near: 1, far: 50 });
     sun.shadow.bias = -0.0004;
     sun.shadow.normalBias = 0.025;
@@ -140,6 +153,21 @@ export class KeyboardScene {
     this.glowMat = this.buildRim();
     this.stars = this.buildStars();
     this.buildKeys();
+    this.palettes = this.buildPalettes();
+  }
+
+  /**
+   * Rim colours for each project: the brand colours of the keys that project lights up, in key order,
+   * repeated to fill PAL slots. Near-black brands (Three.js, AWS, MCP, Express) are skipped: as light they'd read as a gap.
+   */
+  private buildPalettes() {
+    return this.opts.used.map((row) => {
+      const lum = (c: THREE.Color) => c.getHSL({ h: 0, s: 0, l: 0 }, THREE.SRGBColorSpace).l;
+      const cols = this.keys.filter((k) => row[k.i] && lum(k.techColor) > 0.2).map((k) => k.techColor);
+      if (!cols.length) cols.push(WHITE);
+      // the rim shader writes gl_FragColor as-is (like its rainbow), so hand it display-space (sRGB) values
+      return Array.from({ length: PAL }, (_, j) => cols[j % cols.length].clone().convertLinearToSRGB());
+    });
   }
 
   /** Dark room with four soft boxes, prefiltered for reflections: this is what stops the caps reading flat. */
@@ -189,15 +217,17 @@ export class KeyboardScene {
     const g = c.getContext("2d")!;
     g.shadowColor = "rgba(0,0,0,1)"; g.shadowBlur = 36; g.shadowOffsetX = 1000; g.fillStyle = "#000";
     g.fillRect(70 - 1000, 60, 372, 180);
+    const dropTex = new THREE.CanvasTexture(c);
+    this.disposables.push(dropTex);
     const drop = new THREE.Mesh(
       new THREE.PlaneGeometry(CASE_W + 2.6, CASE_H + 2.2),
-      new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, opacity: 0.9, depthWrite: false, toneMapped: false }),
+      new THREE.MeshBasicMaterial({ map: dropTex, transparent: true, opacity: 0.9, depthWrite: false, toneMapped: false }),
     );
     drop.position.set(0, -0.35, -0.7);
     this.board.add(drop);
   }
 
-  /** Thin RGB stripe hugging the case edge. Adds light without writing alpha, so no halo over the page. */
+  /** Thin light stripe hugging the case edge: rainbow in Stack, the project's key colours in Experience, white in the footer. Adds light without writing alpha, so no halo over the page. */
   private buildRim() {
     const mat = new THREE.ShaderMaterial({
       transparent: true,
@@ -211,19 +241,29 @@ export class KeyboardScene {
       uniforms: {
         uTime: { value: 0 },
         uGlow: { value: 0 },
+        // Stack: rainbow. Experience (uPw → 1): the current project's palette. Footer (uWhite → 1): plain white.
+        uPal: { value: Array.from({ length: PAL }, () => new THREE.Color()) },
+        uPw: { value: 0 },
+        uWhite: { value: 0 },
         uSize: { value: new THREE.Vector2(CASE_W + 2, CASE_H + 2) },
         uHalf: { value: new THREE.Vector2(CASE_W / 2, CASE_H / 2) },
       },
       vertexShader: /* glsl */ `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
-      fragmentShader: /* glsl */ `uniform float uTime,uGlow; uniform vec2 uSize,uHalf; varying vec2 vUv;
+      fragmentShader: /* glsl */ `#define PAL ${PAL}
+        uniform float uTime,uGlow,uPw,uWhite; uniform vec2 uSize,uHalf; uniform vec3 uPal[PAL]; varying vec2 vUv;
         vec3 hue(float h){ return clamp(abs(mod(h*6.+vec3(0.,4.,2.),6.)-3.)-1.,0.,1.); }
+        vec3 pal(float h){
+          float f=fract(h)*float(PAL); int i=int(f);
+          return mix(uPal[i],uPal[(i+1)%PAL],smoothstep(0.,1.,fract(f)));
+        }
         void main(){
           vec2 p=(vUv-.5)*uSize; vec2 q=abs(p)-uHalf+.42;
           float d=length(max(q,0.))+min(max(q.x,q.y),0.)-.42;
           float a=exp(-max(d,0.)*4.5)*smoothstep(-.12,.02,d);
           vec2 e=abs(vUv-.5); a*=smoothstep(.5,.4,max(e.x,e.y));
           float ang=atan(p.y,p.x)/6.2831853+uTime*.05;
-          gl_FragColor=vec4(hue(ang),a*uGlow);
+          vec3 c=mix(mix(hue(ang),pal(ang),uPw),vec3(1.),uWhite);
+          gl_FragColor=vec4(c,a*uGlow);
         }`,
     });
     const rim = new THREE.Mesh(new THREE.PlaneGeometry(CASE_W + 2, CASE_H + 2), mat);
@@ -371,8 +411,16 @@ export class KeyboardScene {
     return { w: h * this.camera.aspect, h };
   }
 
+  /**
+   * Sizes to the canvas box, not innerHeight. The canvas is 100lvh tall (globals.css), so the mobile URL bar
+   * showing and hiding doesn't change it, and the keyboard doesn't jump or rescale mid-scroll.
+   */
   resize() {
-    const w = window.innerWidth, h = window.innerHeight;
+    const el = this.renderer.domElement;
+    const w = el.clientWidth || window.innerWidth, h = el.clientHeight || window.innerHeight;
+    if (w === this.w && h === this.h) return;
+    this.w = w;
+    this.h = h;
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
@@ -380,7 +428,8 @@ export class KeyboardScene {
 
   setPointer(clientX: number, clientY: number, pointerType: string) {
     this.pointerType = pointerType;
-    this.ndc.set((clientX / window.innerWidth) * 2 - 1, -(clientY / window.innerHeight) * 2 + 1);
+    this.ndc.set((clientX / this.w) * 2 - 1, -(clientY / this.h) * 2 + 1);
+    this.pointerDirty = true;
   }
 
   pick(ndc = this.ndc): Key | null {
@@ -391,7 +440,7 @@ export class KeyboardScene {
 
   /** Cap under a screen point, without moving the hover pointer. */
   pickAt(clientX: number, clientY: number) {
-    return this.pick(new THREE.Vector2((clientX / window.innerWidth) * 2 - 1, -(clientY / window.innerHeight) * 2 + 1));
+    return this.pick(new THREE.Vector2((clientX / this.w) * 2 - 1, -(clientY / this.h) * 2 + 1));
   }
 
   /** Presses every cap whose visible legend matches the typed letter. */
@@ -429,11 +478,19 @@ export class KeyboardScene {
     this.sun.position.set(b.position.x + 3, b.position.y + 9, b.position.z + 11);
     this.sun.target.position.copy(b.position);
     this.glowMat.uniforms.uTime.value = t;
-    this.glowMat.uniforms.uGlow.value = kb.glow;
+    const gu = this.glowMat.uniforms;
+    gu.uGlow.value = kb.glow;
+    // footer: exp falls back to 0 while flip2 rises, so hold the palette until white has taken over (no rainbow flash)
+    gu.uPw.value = clamp01(kb.exp + kb.flip2 * 2);
+    gu.uWhite.value = smooth(clamp01(kb.flip2));
     this.stars.rotation.y = t * 0.004;
     this.stars.position.y = this.scroll * 4;
 
-    const hk = this.pointerType !== "touch" && this.ndc.x < 2 && kb.flip2 < 0.5 ? this.pick() : null;
+    // Raycasting 32 bevelled caps is the priciest CPU work per frame: redo it when the pointer moves,
+    // otherwise every 4th frame to follow the board as it floats and scrolls under a still pointer.
+    const canHover = this.pointerType !== "touch" && this.ndc.x < 2 && kb.flip2 < 0.5;
+    const hk = !canHover ? null : this.pointerDirty || this.frameNo++ % 4 === 0 ? this.pick() : this.hovered;
+    this.pointerDirty = false;
     if (hk !== this.hovered) {
       this.hovered = hk;
       this.onHoverChange?.(hk);
@@ -442,6 +499,8 @@ export class KeyboardScene {
     // which techs are lit in the Experience section: blend neighbouring projects
     const used = opts.used, last = used.length - 1;
     const i0 = Math.min(last, Math.floor(kb.proj)), i1 = Math.min(last, i0 + 1), fr = smooth(clamp01(kb.proj - i0));
+    const pa = this.palettes[i0], pb = this.palettes[i1], upal = gu.uPal.value as THREE.Color[];
+    for (let j = 0; j < PAL; j++) upal[j].copy(pa[j]).lerp(pb[j], fr);
     for (const k of this.keys) {
       const w = (k.c + k.r) / (COLS - 1 + ROWS - 1);
       const p1 = reduced ? clamp01(kb.flip) : smooth(clamp01((kb.flip - w * 0.55) / 0.45));
@@ -475,5 +534,31 @@ export class KeyboardScene {
     });
     this.disposables.forEach((d) => d.dispose());
     this.renderer.dispose();
+    // No forceContextLoss(): a lost context stays lost for its canvas, and React remounts onto the same <canvas>
+    // (strict mode in dev, fast refresh), so the next renderer would fail and the no-WebGL fallback would kick in.
   }
+}
+
+/**
+ * Stand-in when WebGL is unavailable (blocked, old GPU, lost context at start). Same surface, draws nothing,
+ * so the timeline, carousel and copy all keep working without the keyboard.
+ */
+export function createNullScene(): KeyboardScene {
+  const noop = () => {};
+  return {
+    kb: { x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0, s: 1, flip: 0, flip2: 0, exp: 0, proj: 0, glow: 0, motion: 0, intro: 1 },
+    keys: [],
+    scroll: 0,
+    hovered: null,
+    view: () => ({ w: 16, h: 9 }),
+    resize: noop,
+    setPointer: noop,
+    pick: () => null,
+    pickAt: () => null,
+    pressLetter: () => [],
+    setLangLabel: noop,
+    buildTextures: noop,
+    start: noop,
+    dispose: noop,
+  } as unknown as KeyboardScene;
 }

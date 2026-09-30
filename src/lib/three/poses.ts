@@ -24,6 +24,7 @@ export const MOBILE: PoseSet = {
   hero: (v) => ({ x: 0, y: -v.h * 0.13, z: 0, rx: -0.85, ry: 0, rz: 0, s: (v.w * 0.97) / CASE_W }),
   // Upright 4 x 8 in the top half; the copy sits below it.
   stack: (v) => ({ x: 0, y: v.h * 0.2, z: 0, rx: -0.5, ry: 0, rz: -Math.PI / 2 + 0.14, s: Math.min((v.w * 0.8) / CASE_H, (v.h * 0.46) / CASE_W) }),
-  exp: (v) => ({ x: -v.w * 0.04, y: v.h * 0.27, z: 0, rx: -0.75, ry: 0, rz: -0.06, s: (v.w * 0.86) / CASE_W }),
+  // Centred, straight and near full width just under the header, so the lit keys read; the card sits below.
+  exp: (v) => ({ x: 0, y: v.h * 0.29, z: 0, rx: -0.62, ry: 0, rz: 0, s: (v.w * 0.86) / CASE_W }),
   footer: (v) => ({ x: 0, y: v.h * 0.04, z: -6, rx: -1.05, ry: 0, rz: -0.1, s: Math.min(1.8, (v.w * 1.3) / CASE_W) }),
 };

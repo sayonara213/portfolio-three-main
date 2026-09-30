@@ -15,15 +15,18 @@
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-html{background:var(--ink)}
+html{background:var(--ink);overscroll-behavior-y:none;-webkit-text-size-adjust:100%}
+/* contact sheet open: page behind neither scrolls nor scrubs the timeline */
+html.modal-open,html.modal-open body{overflow:hidden}
 body{margin:0;background:radial-gradient(120% 85% at 50% 0%,var(--ink-hi) 0%,var(--ink) 62%) fixed,var(--ink);color:var(--paper);font-family:var(--f-body);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 body.is-loading{overflow:hidden}
-button{font:inherit;color:inherit}
+button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 a{color:inherit}
 :focus-visible{outline:2px solid #4fb8ff;outline-offset:3px;border-radius:6px}
 
 /* ---------- Stage ---------- */
-#gl{position:fixed;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;display:block}
+/* 100lvh: the largest viewport, so iOS/Android toolbars showing or hiding never resize the canvas or re-render the 3D at a new size */
+#gl{position:fixed;top:0;left:0;width:100%;height:100vh;height:100lvh;z-index:2;pointer-events:none;display:block}
 #scrim{position:fixed;inset:0;z-index:3;pointer-events:none;background:radial-gradient(60% 50% at 50% 50%,rgba(11,11,12,.6),rgba(11,11,12,.2));visibility:hidden;opacity:0}
 /* 4.5 viewports of scroll + 1 for the last screen. Timeline time is measured in these viewport units. */
 #track{height:550svh}
@@ -44,15 +47,14 @@ a{color:inherit}
 .brand{min-width:0;overflow:hidden;text-overflow:ellipsis;font-family:var(--f-display);font-weight:600;font-size:1em;letter-spacing:-.01em;text-decoration:none}
 .brand span{font-family:var(--f-mono);font-weight:400;font-size:.79em;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-left:.6em}
 .header-actions{flex:none;display:flex;align-items:center;gap:clamp(6px,2vw,10px)}
-.lang{display:flex;border:1px solid var(--line);border-radius:999px;padding:3px;background:rgba(21,21,23,.6);backdrop-filter:blur(8px)}
+.lang{display:flex;border:1px solid var(--line);border-radius:999px;padding:3px;background:rgba(21,21,23,.6);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .lang button{background:none;border:0;border-radius:999px;padding:.45em .9em;font-family:var(--f-mono);font-size:.79em;letter-spacing:.08em;color:var(--mute);cursor:pointer}
 .lang button[aria-pressed="true"]{background:var(--paper);color:var(--ink)}
 .btn-contact,.btn-primary{position:relative;border:0;border-radius:999px;padding:9px 18px;background:var(--paper);color:var(--ink);font-family:var(--f-display);font-weight:600;font-size:13px;cursor:pointer;isolation:isolate;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
 .site-header .btn-contact{padding:.7em 1.4em;font-size:.93em}
 .btn-contact::before,.btn-primary::before{content:"";position:absolute;inset:-2px;border-radius:inherit;background:var(--rainbow);z-index:-1;opacity:0;transition:opacity .3s}
-.btn-contact:hover::before,.btn-primary:hover::before{opacity:1}
+@media (hover:hover){.btn-contact:hover::before,.btn-primary:hover::before{opacity:1}.btn-ghost:hover{border-color:#55555c}.sheet .row a:hover{text-decoration:underline}}
 .btn-ghost{border:1px solid var(--line);border-radius:999px;padding:8px 16px;background:rgba(21,21,23,.6);font-family:var(--f-display);font-weight:500;font-size:13px;text-decoration:none;cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:border-color .2s}
-.btn-ghost:hover{border-color:#55555c}
 .progress{position:absolute;left:0;bottom:0;height:2px;width:100%;background:var(--rainbow);transform-origin:left;transform:scaleX(0)}
 
 /* ---------- Panels (fixed; the timeline shows and hides them) ---------- */
@@ -62,7 +64,7 @@ a{color:inherit}
 .rainbow-text{background:var(--rainbow);-webkit-background-clip:text;background-clip:text;color:transparent}
 
 /* Hero sits under the canvas so the keyboard may overlap the name */
-#p-hero{z-index:1;visibility:visible;opacity:1;display:flex;flex-direction:column;align-items:center;padding:calc(90px + env(safe-area-inset-top,0px)) var(--gutter) 28px;text-align:center}
+#p-hero{z-index:1;visibility:visible;opacity:1;display:flex;flex-direction:column;align-items:center;padding:calc(90px + env(safe-area-inset-top,0px)) var(--gutter) calc(28px + env(safe-area-inset-bottom,0px));text-align:center}
 /* Name width in em of the widest line (desktop: both words on one line; mobile: one word per line), per language. Font size = available width / that, so the name never wraps or overflows. Tune these if a font changes. */
 :root{--nw:7.6;--nwm:5.5}
 html[lang="uk"]{--nw:8.4;--nwm:5.6}
@@ -85,7 +87,7 @@ kbd.rgb{background:var(--rainbow);color:var(--ink)}
 .cats li span{font-family:var(--f-mono);font-size:11px;color:var(--mute)}
 .cats li.is-active{color:#fff}
 .cats li:not(.is-active){color:#a8a8b0}
-.readout{display:flex;align-items:center;gap:12px;min-height:52px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(21,21,23,.72);backdrop-filter:blur(8px);font-size:14px}
+.readout{display:flex;align-items:center;gap:12px;min-height:52px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(21,21,23,.72);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);font-size:14px}
 .readout .chip{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:8px;background:var(--line);font-family:var(--f-display);font-weight:700;font-size:12px;color:#fff}
 .readout .chip svg{width:18px;height:18px}
 .readout .txt{min-width:0}
@@ -93,8 +95,10 @@ kbd.rgb{background:var(--rainbow);color:var(--ink)}
 .readout small{color:var(--mute)}
 
 /* Experience: keyboard on the left, an interactive project carousel on the right */
-#p-exp{visibility:visible;opacity:1}
-.exp{position:absolute;right:var(--gutter);top:0;bottom:0;margin-block:auto;height:fit-content;width:min(480px,42vw);display:grid;gap:16px;visibility:hidden;opacity:0;pointer-events:auto;touch-action:pan-y}
+/* The panel places the card with flexbox, so the card is always exactly as tall as its content.
+   (Absolute insets + height:fit-content don't shrink in iOS Safari: the card stretched to full height.) */
+#p-exp{visibility:visible;opacity:1;display:flex;align-items:center;justify-content:flex-end;padding-inline:var(--gutter)}
+.exp{position:relative;flex:none;width:min(480px,42vw);display:grid;gap:16px;align-content:start;visibility:hidden;opacity:0;pointer-events:auto;touch-action:pan-y}
 .exp .meta{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
 .exp .count{font-family:var(--f-mono);font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums}
 .slides{display:grid}
@@ -106,11 +110,12 @@ kbd.rgb{background:var(--rainbow);color:var(--ink)}
 .slide h3{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(1.6rem,2.8vw,2.4rem);letter-spacing:-.03em;line-height:1.05}
 .slide .desc{margin:0;color:#c8c8cf;max-width:44ch}
 .exp-nav{display:flex;align-items:center;gap:14px}
-.exp-nav .btn-ghost{padding:8px 14px;line-height:1}
+.exp-nav .btn-ghost{padding:10px 16px;line-height:1;min-height:40px}
 .exp-nav .btn-ghost:disabled{opacity:.35;pointer-events:none}
 .dots{display:flex;gap:8px;align-items:center;flex:1}
-.dots button{width:8px;height:8px;padding:0;border:0;border-radius:99px;background:var(--line);cursor:pointer;transition:width .3s,background .3s}
+.dots button{position:relative;width:8px;height:8px;padding:0;border:0;border-radius:99px;background:var(--line);cursor:pointer;transition:width .3s,background .3s}
 .dots button[aria-current="true"]{width:24px;background:var(--paper)}
+.dots button::after{content:"";position:absolute;inset:-12px -4px}
 .chips{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
 .chips li{font-family:var(--f-mono);font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--line);color:#d6d6dc;display:flex;align-items:center;gap:6px}
 .chips li b{width:7px;height:7px;border-radius:2px;background:var(--c)}
@@ -133,13 +138,13 @@ kbd.rgb{background:var(--rainbow);color:var(--ink)}
 #dog{position:fixed;right:clamp(16px,6vw,80px);bottom:0;z-index:45;margin:0;background:#fff;padding:12px 12px 14px;border-radius:6px;box-shadow:0 30px 60px rgba(0,0,0,.6);width:min(230px,52vw);transform-origin:50% 100%}
 #dog img{display:block;width:100%;height:auto;border-radius:2px}
 #dog figcaption{font-family:var(--font-caveat),var(--font-zen),cursive;font-size:20px;color:#1a1a1d;text-align:center;margin-top:6px;line-height:1.1}
-#dog button{position:absolute;top:-10px;right:-10px;width:28px;height:28px;border-radius:50%;border:0;background:#1a1a1d;color:#fff;cursor:pointer;font-size:14px}
+#dog button{position:absolute;top:-12px;right:-12px;width:36px;height:36px;border-radius:50%;border:0;background:#1a1a1d;color:#fff;cursor:pointer;font-size:14px}
 
 /* ---------- Tooltip + contact sheet ---------- */
 #tip{position:fixed;left:0;top:0;z-index:30;pointer-events:none;padding:8px 12px;border-radius:10px;background:var(--ink-2);border:1px solid var(--line);font-size:13px;max-width:240px;opacity:0;transition:opacity .15s}
 #tip strong{font-family:var(--f-display);font-weight:600;display:block}
 #tip span{color:var(--mute)}
-#contact{position:fixed;inset:0;z-index:48;display:grid;place-items:center;padding-inline:16px;background:rgba(5,5,6,.7);backdrop-filter:blur(6px)}
+#contact{position:fixed;inset:0;z-index:48;display:grid;place-items:center;padding-inline:16px;background:rgba(5,5,6,.7);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .sheet{width:min(440px,100%);background:var(--ink-2);border:1px solid var(--line);border-radius:18px;padding:24px;display:grid;gap:16px;position:relative;overflow:hidden}
 .sheet::before{content:"";position:absolute;inset:0 0 auto;height:3px;background:var(--rainbow)}
 .sheet h3{margin:0;font-family:var(--f-display);font-weight:700;font-size:26px;letter-spacing:-.03em}
@@ -147,7 +152,6 @@ kbd.rgb{background:var(--rainbow);color:var(--ink)}
 .sheet .row > span{min-width:0;overflow-wrap:anywhere;user-select:all}
 .sheet .row button,.sheet .close{border:1px solid var(--line);background:none;border-radius:999px;padding:6px 12px;font-size:12px;cursor:pointer;flex:none}
 .sheet .row a{text-decoration:none}
-.sheet .row a:hover{text-decoration:underline}
 .sheet .close{justify-self:end}
 /* Debug HUD, shown with #debug in the URL */
 #hud{position:fixed;left:12px;bottom:12px;z-index:60;font:11px/1.5 var(--f-mono);background:rgba(0,0,0,.75);border:1px solid var(--line);padding:8px 10px;border-radius:8px;white-space:pre;color:#9fe}
@@ -166,12 +170,44 @@ kbd.rgb{background:var(--rainbow);color:var(--ink)}
   .cats{grid-template-columns:1fr 1fr;column-gap:14px}
   .cats li{font-size:12px;padding:7px 0;gap:8px}
   .cats li span{display:none}
-  .exp{left:16px;right:16px;width:auto;top:auto;margin-block:0;bottom:calc(18px + env(safe-area-inset-bottom,0px));gap:10px;padding-top:16px;background:linear-gradient(to bottom,rgba(11,11,12,0),rgba(11,11,12,.94) 14%)}
-  .slide .cover{aspect-ratio:auto;height:110px}
-  .slide h3{font-size:1.5rem}
-  .slide .desc{font-size:14px}
+  #p-exp{align-items:flex-end;padding:0 16px calc(18px + env(safe-area-inset-bottom,0px))}
+  .exp{width:100%;gap:10px;padding-top:16px;background:linear-gradient(to bottom,rgba(11,11,12,0),rgba(11,11,12,.94) 14%)}
+  /* Experience card: compact, bottom-anchored under the keyboard (MOBILE.exp in poses.ts keeps the board above it) */
+  /* Slides share one grid cell, so the cell is as tall as the tallest slide: align content to the bottom so any
+     spare height sits above the card (over nothing), never between the copy and the controls. */
+  .slide{gap:10px;grid-template-columns:104px minmax(0,1fr);column-gap:14px;align-content:end}
+  .slide > *{grid-column:1/-1}
+  /* Cover becomes a fixed 16:10 thumbnail beside the title: fixed px, so it's the same size in every browser */
+  .slide .cover{grid-column:1;grid-row:1;width:104px;height:65px;aspect-ratio:auto;border-radius:10px;align-self:center}
+  .slide h3{grid-column:2;grid-row:1;align-self:center}
+  /* chips repeat what the lit keys show; keep them to one faded line so the card stays short */
+  .chips{flex-wrap:nowrap;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,#000 80%,transparent);mask-image:linear-gradient(90deg,#000 80%,transparent)}
+  .chips li{flex:none}
+  .slide h3{font-size:1.35rem;line-height:1.1}
+  .slide .desc{font-size:14px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .slide .links{gap:8px}
+  .slide .links a{padding:10px 16px;font-size:14px;min-height:40px}
+  /* dots on the left as progress, both arrows together on the right under the thumb */
+  .exp-nav .dots{order:-1}
+  .exp-nav .btn-ghost{min-width:44px;min-height:40px;padding:10px 14px}
   .footer-title{font-size:clamp(2.2rem,11vw,3.4rem)}
   .footer-bottom{flex-direction:column-reverse;gap:14px}
+  .exp-nav{gap:8px}
+}
+/* short phones (SE, landscape-ish): drop the least important lines so copy never slides under the keyboard */
+@media (max-width:767px) and (max-height:700px){
+  .stack-copy > p,.sample{display:none}
+  .slide .desc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+}
+/* phones in landscape get the desktop layout with very little height */
+@media (min-width:768px) and (max-height:560px){
+  #p-hero{padding-top:64px}
+  .stack-copy{gap:10px}
+  .stack-copy > p,.cats li span,.slide .cover,.sample{display:none}
+  .stack-copy h2{font-size:clamp(1.6rem,3.4vw,2.4rem)}
+  .cats li{padding:6px 0;font-size:13px}
+  .exp{gap:10px}
+  .footer-inner{gap:14px}
 }
 html[lang="ja"] .hero-name,html[lang="ja"] h2,html[lang="ja"] .footer-title{letter-spacing:-.01em}
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}

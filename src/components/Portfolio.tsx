@@ -11,7 +11,7 @@ import { setLang, useLang } from "@/lib/content/lang-store";
 import { PROJECTS, placeholderCover } from "@/lib/content/projects";
 import { TECH, TECH_FLAT, colorOf, inkFor, type Tech } from "@/lib/content/tech";
 import type { HeroAction } from "@/lib/content/glyphs";
-import { KeyboardScene, type Key } from "@/lib/three/keyboard-scene";
+import { KeyboardScene, createNullScene, type Key } from "@/lib/three/keyboard-scene";
 import { LABELS, SEG, buildTimeline } from "@/lib/timeline";
 
 const EMAIL = "maxsai567@gmail.com";
@@ -43,7 +43,7 @@ export default function Portfolio() {
   const [active, setActive] = useState<Active | null>(null);
   const [idx, setIdx] = useState(0);
   const idxRef = useRef(0);
-  const swipeX = useRef(0);
+  const swipeX = useRef<number | null>(null);
   const goRef = useRef<(n: number, via?: string) => void>(() => {});
 
   const rootRef = useRef<HTMLDivElement>(null);
@@ -80,9 +80,19 @@ export default function Portfolio() {
     if (scene?.hovered?.action === "lang") scene.onHoverChange?.(scene.hovered); // refresh the "EN → UA" tip
   }, [lang]);
 
+  // Contact sheet: focus goes in on open and back to the opener on close; the page behind can't scroll or take focus (inert).
+  const openerRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     contactRef.current = contactOpen;
-    if (contactOpen) copyRef.current?.focus();
+    if (!contactOpen) return;
+    openerRef.current = document.activeElement as HTMLElement | null;
+    copyRef.current?.focus();
+    const html = document.documentElement;
+    html.classList.add("modal-open");
+    return () => {
+      html.classList.remove("modal-open");
+      openerRef.current?.focus?.({ preventScroll: true });
+    };
   }, [contactOpen]);
 
   useEffect(() => {
@@ -90,7 +100,20 @@ export default function Portfolio() {
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const legendFont = getComputedStyle(document.documentElement).getPropertyValue("--font-unbounded").trim() || "system-ui";
 
-    const scene = new KeyboardScene(canvas, { legendFont, reducedMotion: reduced, used: USED });
+    // A reload mid-page would otherwise restore a scroll position under the splash and jump the timeline.
+    history.scrollRestoration = "manual";
+    scrollTo(0, 0);
+
+    let scene: KeyboardScene;
+    let hasGL = true;
+    try {
+      scene = new KeyboardScene(canvas, { legendFont, reducedMotion: reduced, used: USED });
+    } catch {
+      hasGL = false;
+      scene = createNullScene();
+      canvas.hidden = true;
+      track("webgl_unavailable");
+    }
     sceneRef.current = scene;
     scene.setLangLabel(langLabel(langRef.current));
     setUserProps({ reduced_motion: reduced, pointer: matchMedia("(pointer: coarse)").matches ? "touch" : "mouse", layout: innerWidth >= 768 ? "desktop" : "mobile" });
@@ -108,7 +131,7 @@ export default function Portfolio() {
       clearTimeout(hoverTimer);
       const label = k && (k.state === "tech" ? k.name : k.state === "hero" ? k.action : undefined);
       if (k && label) hoverTimer = window.setTimeout(() => trackOnce("key_hover", label, { key_name: label, key_state: k.state ?? undefined }), 450);
-      document.body.style.cursor = k ? "pointer" : "";
+      document.body.style.cursor = k && (k.action || k.state === "tech") ? "pointer" : "";
       if (k && k.state === "hero" && k.action) {
         const d = I18N[langRef.current];
         const sub = k.action === "lang" ? `${langLabel(langRef.current)} → ${nextLang(langRef.current).label}` : "";
@@ -296,7 +319,7 @@ export default function Portfolio() {
         Promise.all([document.fonts.load(`700 100px ${legendFont}`), document.fonts.ready]).catch(() => {}), // a failed font never blocks the intro
         new Promise((r) => setTimeout(r, 2500)),
       ]);
-      Promise.all([fontsReady, new Promise((r) => setTimeout(r, 1300))]).then(() => {
+      Promise.all([fontsReady, new Promise((r) => setTimeout(r, hasGL ? 1300 : 300))]).then(() => {
         if (cancelled) return;
         scene.buildTextures();
         scene.start();
@@ -339,18 +362,36 @@ export default function Portfolio() {
     };
   }, []);
 
+  const copiedTimer = useRef(0);
+  useEffect(() => () => clearTimeout(copiedTimer.current), []);
+  const mailRef = useRef<HTMLSpanElement>(null);
   const copyMail = () => {
     const done = () => {
       setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
+      clearTimeout(copiedTimer.current);
+      copiedTimer.current = window.setTimeout(() => setCopied(false), 1600);
     };
-    navigator.clipboard?.writeText(EMAIL).then(
-      () => {
-        track("email_copy", { ok: true });
-        done();
-      },
-      () => track("email_copy", { ok: false }),
-    );
+    // No Clipboard API (plain http, old browsers, denied): select the address so the visitor can copy it themselves.
+    const fallback = () => {
+      track("email_copy", { ok: false });
+      const el = mailRef.current;
+      if (el) getSelection()?.selectAllChildren(el);
+    };
+    if (!navigator.clipboard) return fallback();
+    navigator.clipboard.writeText(EMAIL).then(() => {
+      track("email_copy", { ok: true });
+      done();
+    }, fallback);
+  };
+  // Keeps Tab inside the contact sheet (inert covers clicks and AT; this covers the browser chrome wrap-around).
+  const trapFocus = (e: React.KeyboardEvent<HTMLElement>) => {
+    if (e.key !== "Tab") return;
+    const f = e.currentTarget.querySelectorAll<HTMLElement>("button, a[href]");
+    const first = f[0], last = f[f.length - 1];
+    const to = e.shiftKey ? (document.activeElement === first ? last : null) : document.activeElement === last ? first : null;
+    if (!to) return;
+    e.preventDefault();
+    to.focus();
   };
   const toTop = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -362,10 +403,10 @@ export default function Portfolio() {
   return (
     <div ref={rootRef}>
       {!splashDone && (
-        <div id="splash" aria-live="polite">
+        <div id="splash" role="status">
           <div className="splash-inner">
             <h2 className="splash-name">{name}</h2>
-            <div className="splash-meta">
+            <div className="splash-meta" aria-hidden="true">
               <div className="splash-bar"><i /></div>
               <span className="splash-count">000</span>
             </div>
@@ -377,7 +418,7 @@ export default function Portfolio() {
       <canvas id="gl" ref={canvasRef} aria-hidden="true" />
       <div id="scrim" aria-hidden="true" />
 
-      <header className="site-header">
+      <header className="site-header" inert={contactOpen}>
         <a className="brand" href="#" onClick={toTop}>
           {name}<span>{t.brand}</span>
         </a>
@@ -387,7 +428,7 @@ export default function Portfolio() {
           </button>
           <div className="lang" role="group" aria-label={t.aria.lang}>
             {LANGS.map((l) => (
-              <button type="button" key={l.id} aria-pressed={lang === l.id} onClick={() => changeLang(l.id, "header")}>
+              <button type="button" key={l.id} lang={l.id} aria-pressed={lang === l.id} onClick={() => changeLang(l.id, "header")}>
                 {l.label}
               </button>
             ))}
@@ -397,16 +438,16 @@ export default function Portfolio() {
       </header>
 
       {/* Panels are fixed; the scroll timeline (lib/timeline.ts) shows and hides them. */}
-      <main>
+      <main inert={contactOpen}>
         <section className="panel" id="p-hero" data-state="hero" aria-label={t.aria.intro}>
           <p className="eyebrow hero-meta">{t.eyebrow}</p>
           <h1 className="hero-name" aria-label={name}>
             <span className="line">{t.nameA}</span> <span className="line">{t.nameB}</span>
           </h1>
           <p className="hero-hint hero-meta">
-            <kbd>S</kbd><kbd>A</kbd><kbd>I</kbd>
+            <kbd aria-hidden="true">S</kbd><kbd aria-hidden="true">A</kbd><kbd aria-hidden="true">I</kbd>
             <span>{t.hint}</span>
-            <kbd className="rgb">↓</kbd>
+            <kbd className="rgb" aria-hidden="true">↓</kbd>
           </p>
         </section>
 
@@ -460,23 +501,37 @@ export default function Portfolio() {
             role="group"
             aria-roledescription="carousel"
             aria-label={t.expEyebrow}
-            onPointerDown={(e) => void (swipeX.current = e.clientX)}
+            onPointerDown={(e) => void (swipeX.current = e.isPrimary ? e.clientX : null)}
+            onPointerCancel={() => void (swipeX.current = null)}
             onPointerUp={(e) => {
-              const dx = e.clientX - swipeX.current;
+              const x0 = swipeX.current;
+              swipeX.current = null;
+              if (x0 === null) return;
+              const dx = e.clientX - x0;
               if (Math.abs(dx) > 50) goRef.current(idxRef.current + (dx < 0 ? 1 : -1), "swipe");
             }}
           >
             <div className="meta">
               <p className="eyebrow">{t.expEyebrow}</p>
-              <span className="count">
+              <span className="count" aria-live="polite" aria-atomic="true">
                 0{idx + 1} / 0{PROJECTS.length}
               </span>
             </div>
-            <div className="slides" aria-live="polite">
+            <div className="slides">
               {PROJECTS.map((p, i) => (
                 <article className="slide" key={p.title} role="group" aria-roledescription="slide" aria-label={`${i + 1} / ${PROJECTS.length}: ${p.title}`}>
                   <figure className="cover">
-                    <Image src={p.cover ?? placeholderCover(p, i)} alt={`${p.title} cover`} width={640} height={400} unoptimized draggable={false} />
+                    <Image
+                      src={p.cover ?? placeholderCover(p, i)}
+                      alt={`${p.title} cover`}
+                      width={1280}
+                      height={800}
+                      sizes="(max-width: 767px) 104px, 480px"
+                      unoptimized={!p.cover}
+                      // Eager: Safari may never start a lazy load inside the fixed carousel that fades in without moving
+                      loading="eager"
+                      draggable={false}
+                    />
                   </figure>
                   <h3>{p.title}</h3>
                   <p className="desc">{p.descI18n?.[lang] ?? p.desc}</p>
@@ -491,12 +546,12 @@ export default function Portfolio() {
                   <div className="links">
                     {p.live && (
                       <a className="btn-primary" href={p.live} target="_blank" rel="noopener">
-                        {t.live} ↗
+                        {t.live} <span aria-hidden="true">↗</span>
                       </a>
                     )}
                     {p.gh && (
                       <a className={p.live ? "btn-ghost" : "btn-primary"} href={p.gh} target="_blank" rel="noopener">
-                        GitHub ↗
+                        GitHub <span aria-hidden="true">↗</span>
                       </a>
                     )}
                   </div>
@@ -506,15 +561,15 @@ export default function Portfolio() {
             </div>
             <div className="exp-nav">
               <button type="button" className="btn-ghost" aria-label={t.prev} disabled={idx === 0} onClick={() => goRef.current(idx - 1)}>
-                ←
+                <span aria-hidden="true">←</span>
               </button>
               <div className="dots">
                 {PROJECTS.map((p, i) => (
-                  <button key={p.title} type="button" aria-label={p.title} aria-current={i === idx} onClick={() => goRef.current(i, "dots")} />
+                  <button key={p.title} type="button" aria-label={`${i + 1} / ${PROJECTS.length}: ${p.title}`} aria-current={i === idx ? "true" : undefined} onClick={() => goRef.current(i, "dots")} />
                 ))}
               </div>
               <button type="button" className="btn-ghost" aria-label={t.next} disabled={idx === PROJECTS.length - 1} onClick={() => goRef.current(idx + 1)}>
-                →
+                <span aria-hidden="true">→</span>
               </button>
             </div>
           </div>
@@ -534,10 +589,10 @@ export default function Portfolio() {
             </div>
             <div className="links">
               <a className="btn-ghost" href={LINKEDIN} target="_blank" rel="noopener">
-                LinkedIn ↗
+                LinkedIn <span aria-hidden="true">↗</span>
               </a>
               <a className="btn-ghost" href={GITHUB} target="_blank" rel="noopener">
-                GitHub ↗
+                GitHub <span aria-hidden="true">↗</span>
               </a>
             </div>
           </div>
@@ -548,7 +603,7 @@ export default function Portfolio() {
                 psst
               </button>
               <button type="button" className="btn-ghost" onClick={toTop}>
-                <span>{t.toTop}</span> ↑
+                <span>{t.toTop}</span> <span aria-hidden="true">↑</span>
               </button>
             </span>
           </div>
@@ -557,9 +612,9 @@ export default function Portfolio() {
       {/* 4.5 viewports of scroll + 1 for the last screen; timeline time is measured in viewports. */}
       <div id="track" aria-hidden="true" />
 
-      <div id="tip" ref={tipRef} role="status" />
+      <div id="tip" ref={tipRef} aria-hidden="true" />
 
-      <figure id="dog" ref={dogRef} hidden>
+      <figure id="dog" ref={dogRef} hidden inert={contactOpen}>
         <Image src="/dog.jpg" alt={t.dogAlt} width={372} height={512} />
         <figcaption>{t.dog}</figcaption>
         <button type="button" aria-label={t.close} onClick={() => toggleDogRef.current(false)}>
@@ -568,10 +623,10 @@ export default function Portfolio() {
       </figure>
 
       <div id="contact" hidden={!contactOpen} onClick={(e) => e.target === e.currentTarget && closeContact("backdrop")}>
-        <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="contact-title">
+        <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="contact-title" onKeyDown={trapFocus}>
           <h3 id="contact-title">{t.contactTitle}</h3>
           <div className="row">
-            <span>{EMAIL}</span>
+            <span ref={mailRef}>{EMAIL}</span>
             <button type="button" ref={copyRef} onClick={copyMail}>
               {copied ? t.copied : t.copy}
             </button>

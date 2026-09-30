@@ -5,6 +5,8 @@ import { DESKTOP, MOBILE } from "@/lib/three/poses";
 import type { Pose } from "@/lib/three/state";
 
 gsap.registerPlugin(ScrollTrigger);
+// iOS/Android toolbars resize the viewport while scrolling; don't re-measure the whole timeline for that.
+ScrollTrigger.config({ ignoreMobileResize: true });
 
 /*
  * SCROLL TIMELINE: scrubbed; after a pause it finishes a half-done transition (see `snapTime`); pauses inside a hold never move.
