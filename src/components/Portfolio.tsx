@@ -18,14 +18,12 @@ const EMAIL = "maxsai567@gmail.com";
 const GITHUB = "https://github.com/sayonara213";
 const LINKEDIN = "https://linkedin.com/in/maksym-sai";
 
-/** USED[project][keyIndex] = 1 when the project uses that key's technology. */
 const USED = PROJECTS.map((p) => TECH_FLAT.map((t) => (p.tech.includes(t.name) ? 1 : 0)));
 
 type Active = Tech & { r: number };
 
 const nextLang = (l: string) => LANGS[(LANGS.findIndex((x) => x.id === l) + 1) % LANGS.length];
 const langLabel = (l: string) => LANGS.find((x) => x.id === l)?.label ?? "EN";
-
 
 const Logo = ({ slug, fill }: { slug: string; fill: string }) => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -77,10 +75,9 @@ export default function Portfolio() {
     document.querySelector('meta[name="description"]')?.setAttribute("content", I18N[lang].metaDesc);
     const scene = sceneRef.current;
     scene?.setLangLabel(langLabel(lang));
-    if (scene?.hovered?.action === "lang") scene.onHoverChange?.(scene.hovered); // refresh the "EN → UA" tip
+    if (scene?.hovered?.action === "lang") scene.onHoverChange?.(scene.hovered);
   }, [lang]);
 
-  // Contact sheet: focus goes in on open and back to the opener on close; the page behind can't scroll or take focus (inert).
   const openerRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     contactRef.current = contactOpen;
@@ -127,7 +124,6 @@ export default function Portfolio() {
     };
     let hoverTimer = 0;
     scene.onHoverChange = (k) => {
-      // count a hover only when the pointer rests on a key for a moment, once per key
       clearTimeout(hoverTimer);
       const label = k && (k.state === "tech" ? k.name : k.state === "hero" ? k.action : undefined);
       if (k && label) hoverTimer = window.setTimeout(() => trackOnce("key_hover", label, { key_name: label, key_state: k.state ?? undefined }), 450);
@@ -167,7 +163,6 @@ export default function Portfolio() {
       },
     });
 
-    // ---------- experience carousel: slides drive which keys are lit (kb.proj) ----------
     const slides = gsap.utils.toArray<HTMLElement>(".slide", root);
     gsap.set(slides.slice(1), { autoAlpha: 0 });
     const go = (to: number, via = "button") => {
@@ -184,7 +179,6 @@ export default function Portfolio() {
     };
     goRef.current = go;
 
-    // ---------- interaction ----------
     const onResize = () => scene.resize();
     const onPointerMove = (e: PointerEvent) => {
       scene.setPointer(e.clientX, e.clientY, e.pointerType);
@@ -249,7 +243,6 @@ export default function Portfolio() {
       const t = scene.scroll * SEG.end;
       if ((e.key === "ArrowRight" || e.key === "ArrowLeft") && !contactRef.current && t > SEG.exp[1] - 0.2 && t < SEG.footer[0] + 0.2) go(idxRef.current + (e.key === "ArrowRight" ? 1 : -1), "key");
       if (e.metaKey || e.ctrlKey || e.altKey || e.key.length !== 1 || contactRef.current) return;
-      // Easter egg: type D-O-G anywhere.
       typed = (typed + e.key.toLowerCase()).slice(-3);
       if (typed === "dog" && dog.hidden) toggleDog(true, "typed_dog");
       const pressed = scene.pressLetter(e.key.toUpperCase());
@@ -263,7 +256,6 @@ export default function Portfolio() {
     addEventListener("click", onClick);
     addEventListener("keydown", onKeyDown);
 
-    // every real link on the page (project, social, contact sheet, footer), with where it sits
     const onLinkClick = (e: MouseEvent) => {
       const a = (e.target as Element).closest?.("a[href]") as HTMLAnchorElement | null;
       if (!a || a.getAttribute("href") === "#") return;
@@ -284,7 +276,6 @@ export default function Portfolio() {
     addEventListener("click", onLinkClick);
     addEventListener("error", onError);
 
-    // ---------- debug HUD: add #debug to the URL ----------
     let hudRaf = 0;
     const hud = location.hash === "#debug" ? document.body.appendChild(Object.assign(document.createElement("div"), { id: "hud" })) : null;
     if (hud) {
@@ -302,7 +293,6 @@ export default function Portfolio() {
       tick();
     }
 
-    // ---------- splash → hero ----------
     let cancelled = false; // strict mode unmounts once before the fonts resolve
     const ctx = gsap.context(() => {
       const count = root.querySelector<HTMLElement>(".splash-count")!, bar = root.querySelector<HTMLElement>(".splash-bar i")!;
@@ -316,7 +306,7 @@ export default function Portfolio() {
       gsap.set(canvas, { opacity: 0 });
 
       const fontsReady = Promise.race([
-        Promise.all([document.fonts.load(`700 100px ${legendFont}`), document.fonts.ready]).catch(() => {}), // a failed font never blocks the intro
+        Promise.all([document.fonts.load(`700 100px ${legendFont}`), document.fonts.ready]).catch(() => {}),
         new Promise((r) => setTimeout(r, 2500)),
       ]);
       Promise.all([fontsReady, new Promise((r) => setTimeout(r, hasGL ? 1300 : 300))]).then(() => {
@@ -371,7 +361,6 @@ export default function Portfolio() {
       clearTimeout(copiedTimer.current);
       copiedTimer.current = window.setTimeout(() => setCopied(false), 1600);
     };
-    // No Clipboard API (plain http, old browsers, denied): select the address so the visitor can copy it themselves.
     const fallback = () => {
       track("email_copy", { ok: false });
       const el = mailRef.current;
@@ -437,7 +426,6 @@ export default function Portfolio() {
         <div className="progress" ref={progressRef} aria-hidden="true" />
       </header>
 
-      {/* Panels are fixed; the scroll timeline (lib/timeline.ts) shows and hides them. */}
       <main inert={contactOpen}>
         <section className="panel" id="p-hero" data-state="hero" aria-label={t.aria.intro}>
           <p className="eyebrow hero-meta">{t.eyebrow}</p>
@@ -604,7 +592,6 @@ export default function Portfolio() {
           </div>
         </section>
       </main>
-      {/* 4.5 viewports of scroll + 1 for the last screen; timeline time is measured in viewports. */}
       <div id="track" aria-hidden="true" />
 
       <div id="tip" ref={tipRef} aria-hidden="true" />

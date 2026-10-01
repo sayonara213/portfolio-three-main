@@ -1,12 +1,7 @@
-// The 8 x 4 keyboard. One row per category; each key is one technology from the CV.
-
 export type Tech = {
-  /** Simple Icons slug, see icons.ts */
   slug: string;
   name: string;
-  /** Cap colour in the Stack state */
   color: string;
-  /** One line from the CV, shown in the readout panel */
   note: string;
 };
 
@@ -56,7 +51,6 @@ export const TECH: Tech[][] = [
   ],
 ];
 
-/** Legends for the letter states; a space is a blank cap. */
 export const HERO_ROWS = ["        ", "CREATIVE", "ENGINEER", "        "];
 export const NAME_ROWS = ["        ", "  MAX   ", "  SAI   ", "        "];
 
@@ -68,5 +62,4 @@ export function luminance(hex: string) {
   const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
   return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
 }
-/** Legend/logo colour that reads on a cap of the given colour. */
 export const inkFor = (hex: string) => (luminance(hex) > 0.62 ? "#141416" : "#ffffff");

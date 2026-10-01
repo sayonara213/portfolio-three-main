@@ -4,7 +4,6 @@ import { ICONS } from "@/lib/content/icons";
 import { COLS, HERO_ROWS, NAME_ROWS, ROWS, TECH, inkFor } from "@/lib/content/tech";
 import type { KeyboardState } from "./state";
 
-// World units. One key pitch = 1.08.
 export const PITCH = 1.08;
 const CAP = 0.8;
 const CAP_TOP = 0.3;
@@ -22,7 +21,6 @@ export type Key = {
   r: number;
   c: number;
   hero: string;
-  /** Function key in the hero state (MacBook-style glyph, clickable) */
   action?: HeroAction;
   nameCh: string;
   slug: string;
@@ -42,7 +40,6 @@ export type Key = {
   press: number;
 };
 
-/** Colours in each project's rim palette; the rim cycles through them around the case. */
 const PAL = 8;
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
@@ -57,11 +54,7 @@ function roundedRect(w: number, h: number, r: number) {
   return s;
 }
 
-/**
- * Sculpted keycap: rounded, bevelled extrusion with the top tapered to 86%.
- * Vertex colours darken the skirt toward the plate (baked ambient occlusion).
- * Normals are left as extruded: recomputing them on this non-indexed geometry makes it faceted.
- */
+// Normals are left as extruded: recomputing them on this non-indexed geometry makes it faceted.
 function capGeometry() {
   const g = new THREE.ExtrudeGeometry(roundedRect(CAP, CAP, 0.16), {
     depth: 0.4, bevelEnabled: true, bevelThickness: 0.1, bevelSize: 0.07, bevelSegments: 6, curveSegments: 10,
@@ -79,10 +72,8 @@ function capGeometry() {
 }
 
 export type SceneOptions = {
-  /** CSS font-family for key letters (the loaded Unbounded face) */
   legendFont: string;
   reducedMotion: boolean;
-  /** USED[project][keyIndex] = 1 when the project uses that key's tech */
   used: number[][];
 };
 
@@ -90,13 +81,10 @@ export class KeyboardScene {
   readonly renderer: THREE.WebGLRenderer;
   readonly camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
   readonly keys: Key[] = [];
-  /** Single source of truth for the board. GSAP writes it, the render loop reads it. */
   readonly kb: KeyboardState = { x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0, s: 1, flip: 0, flip2: 0, exp: 0, proj: 0, glow: 0, motion: 0, intro: 0 };
-  /** 0..1 page scroll progress, used for the star drift */
   scroll = 0;
   hovered: Key | null = null;
   onHoverChange?: (k: Key | null) => void;
-  /** Shown in the top-right corner of the globe key */
   private langLabel = "EN";
   private texturesBuilt = false;
 
@@ -104,17 +92,14 @@ export class KeyboardScene {
   private board = new THREE.Group();
   private sun: THREE.DirectionalLight;
   private glowMat: THREE.ShaderMaterial;
-  /** Per project: PAL rim colours taken from the keys it uses (see buildPalettes) */
   private palettes: THREE.Color[][] = [];
   private stars: THREE.Points;
   private caps: THREE.Mesh[] = [];
   private ray = new THREE.Raycaster();
   private ndc = new THREE.Vector2(9, 9);
   private pointerType = "mouse";
-  /** Pointer moved since the last hover raycast */
   private pointerDirty = false;
   private frameNo = 0;
-  /** Drawing-buffer size in CSS px; see resize() */
   private w = 1;
   private h = 1;
   private par = { x: 0, y: 0 };
@@ -123,7 +108,6 @@ export class KeyboardScene {
   private disposables: { dispose(): void }[] = [];
 
   constructor(canvas: HTMLCanvasElement, private opts: SceneOptions) {
-    // Phones and tablets: fewer pixels and a smaller shadow map. They're the ones that drop frames.
     const lite = matchMedia("(pointer: coarse)").matches || window.innerWidth < 768;
     const r = (this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" }));
     r.setPixelRatio(Math.min(window.devicePixelRatio, lite ? 1.5 : 2));
@@ -156,10 +140,7 @@ export class KeyboardScene {
     this.palettes = this.buildPalettes();
   }
 
-  /**
-   * Rim colours for each project: the brand colours of the keys that project lights up, in key order,
-   * repeated to fill PAL slots. Near-black brands (Three.js, AWS, MCP, Express) are skipped: as light they'd read as a gap.
-   */
+  // Near-black brands (Three.js, AWS, MCP, Express) are skipped: as rim light they'd read as a gap.
   private buildPalettes() {
     return this.opts.used.map((row) => {
       const lum = (c: THREE.Color) => c.getHSL({ h: 0, s: 0, l: 0 }, THREE.SRGBColorSpace).l;
@@ -170,7 +151,6 @@ export class KeyboardScene {
     });
   }
 
-  /** Dark room with four soft boxes, prefiltered for reflections: this is what stops the caps reading flat. */
   private buildEnvironment() {
     const env = new THREE.Scene();
     env.add(new THREE.Mesh(new THREE.BoxGeometry(30, 30, 30), new THREE.MeshBasicMaterial({ color: 0x0c0c0e, side: THREE.BackSide })));
@@ -227,7 +207,6 @@ export class KeyboardScene {
     this.board.add(drop);
   }
 
-  /** Thin light stripe hugging the case edge: rainbow in Stack, the project's key colours in Experience, white in the footer. Adds light without writing alpha, so no halo over the page. */
   private buildRim() {
     const mat = new THREE.ShaderMaterial({
       transparent: true,
@@ -241,7 +220,6 @@ export class KeyboardScene {
       uniforms: {
         uTime: { value: 0 },
         uGlow: { value: 0 },
-        // Stack: rainbow. Experience (uPw → 1): the current project's palette. Footer (uWhite → 1): plain white.
         uPal: { value: Array.from({ length: PAL }, () => new THREE.Color()) },
         uPw: { value: 0 },
         uWhite: { value: 0 },
@@ -343,10 +321,6 @@ export class KeyboardScene {
       g.fill(new Path2D(ICONS[slug]));
     });
   }
-  /**
-   * MacBook-style function key: a line glyph centred like the F-row icons.
-   * The globe key is laid out like a Mac corner-legend key: globe bottom-left, current language top-right.
-   */
   private glyphTex(action: HeroAction) {
     return this.canvasTex((g) => {
       const gl = GLYPHS[action], ink = "#141416";
@@ -372,7 +346,6 @@ export class KeyboardScene {
   private heroTex(k: Key) {
     return k.action ? this.glyphTex(k.action) : k.hero ? this.letterTex(k.hero) : null;
   }
-  /** Updates the language shown on the globe key. Safe to call before the textures exist. */
   setLangLabel(label: string) {
     if (label === this.langLabel) return;
     this.langLabel = label;
@@ -388,7 +361,6 @@ export class KeyboardScene {
       k.state = null; // the render loop re-applies the legend next frame
     }
   }
-  /** Call once the display font has loaded, so letters render in Unbounded. */
   buildTextures() {
     this.texturesBuilt = true;
     for (const k of this.keys) {
@@ -405,7 +377,6 @@ export class KeyboardScene {
     k.legendMat.needsUpdate = true;
   }
 
-  /** Visible world size at z = 0. All poses are expressed relative to this. */
   view() {
     const h = 2 * this.camera.position.z * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2));
     return { w: h * this.camera.aspect, h };
@@ -438,12 +409,10 @@ export class KeyboardScene {
     return hit ? (hit.object.userData.k as Key) : null;
   }
 
-  /** Cap under a screen point, without moving the hover pointer. */
   pickAt(clientX: number, clientY: number) {
     return this.pick(new THREE.Vector2((clientX / this.w) * 2 - 1, -(clientY / this.h) * 2 + 1));
   }
 
-  /** Presses every cap whose visible legend matches the typed letter. */
   pressLetter(ch: string) {
     const hits: Key[] = [];
     for (const k of this.keys) {
@@ -474,7 +443,6 @@ export class KeyboardScene {
     b.position.set(kb.x, kb.y + Math.sin(t * 0.9) * 0.06 * m, kb.z);
     b.rotation.set(kb.rx - this.par.y * 0.06 * m, kb.ry + this.par.x * 0.1 * m, kb.rz);
     b.scale.setScalar(kb.s * (0.82 + 0.18 * kb.intro));
-    // keep the shadow light fixed relative to the board so its shadow frustum stays tight
     this.sun.position.set(b.position.x + 3, b.position.y + 9, b.position.z + 11);
     this.sun.target.position.copy(b.position);
     this.glowMat.uniforms.uTime.value = t;
@@ -496,7 +464,6 @@ export class KeyboardScene {
       this.onHoverChange?.(hk);
     }
 
-    // which techs are lit in the Experience section: blend neighbouring projects
     const used = opts.used, last = used.length - 1;
     const i0 = Math.min(last, Math.floor(kb.proj)), i1 = Math.min(last, i0 + 1), fr = smooth(clamp01(kb.proj - i0));
     const pa = this.palettes[i0], pb = this.palettes[i1], upal = gu.uPal.value as THREE.Color[];
@@ -504,7 +471,7 @@ export class KeyboardScene {
     for (const k of this.keys) {
       const w = (k.c + k.r) / (COLS - 1 + ROWS - 1);
       const p1 = reduced ? clamp01(kb.flip) : smooth(clamp01((kb.flip - w * 0.55) / 0.45));
-      const p2 = reduced ? clamp01(kb.flip2) : smooth(clamp01((kb.flip2 - (1 - w) * 0.55) / 0.45)); // second wave runs the other way
+      const p2 = reduced ? clamp01(kb.flip2) : smooth(clamp01((kb.flip2 - (1 - w) * 0.55) / 0.45));
       this.setLegend(k, p2 >= 0.5 ? "name" : p1 >= 0.5 ? "tech" : "hero");
       const u = used[i0][k.i] + (used[i1][k.i] - used[i0][k.i]) * fr;
       const grey = kb.exp * (1 - u);
@@ -517,7 +484,7 @@ export class KeyboardScene {
       k.pivot.position.z =
         0.32 + (reduced ? 0 : (Math.sin(p1 * Math.PI) + Math.sin(p2 * Math.PI)) * 1.3) +
         k.hover * 0.16 - k.press * 0.16 - grey * 0.2 + kb.exp * u * 0.06;
-      k.legend.rotation.z = kb.rz < -1 ? Math.PI / 2 : 0; // keep legends upright when the board is portrait (mobile stack)
+      k.legend.rotation.z = kb.rz < -1 ? Math.PI / 2 : 0;
     }
 
     this.renderer.render(this.scene, this.camera);
@@ -539,10 +506,6 @@ export class KeyboardScene {
   }
 }
 
-/**
- * Stand-in when WebGL is unavailable (blocked, old GPU, lost context at start). Same surface, draws nothing,
- * so the timeline, carousel and copy all keep working without the keyboard.
- */
 export function createNullScene(): KeyboardScene {
   const noop = () => {};
   return {

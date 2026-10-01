@@ -6,13 +6,9 @@ import type { Lang } from "./i18n";
 export type Project = {
   title: string;
   desc: string;
-  /** Translations of `desc`; English falls back to `desc` */
   descI18n?: Partial<Record<Lang, string>>;
-  /** Live site; omit when there is no public URL (the button is hidden) */
   live?: string;
-  /** Image URL. Placeholders use a generated SVG mock; real ones go in /public/projects. */
   cover?: string;
-  /** Accent colours for the placeholder cover */
   accent: [string, string];
   tech: string[];
   sample?: boolean;
@@ -99,7 +95,6 @@ export const PROJECTS: Project[] = [
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
 
-/** Placeholder cover: a browser-window mock in the project's two accent colours. */
 export function placeholderCover(p: Project, i: number) {
   const [c1, c2] = p.accent;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400">

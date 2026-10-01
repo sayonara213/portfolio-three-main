@@ -1,7 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { I18N, type Lang } from "./i18n";
 
-// The chosen language lives in localStorage. With no saved choice, the browser's preferred languages decide (first supported one wins).
 // The server always renders English; the client switches after hydration, while the splash is still up.
 const KEY = "ms-lang";
 const listeners = new Set<() => void>();
@@ -16,7 +15,6 @@ function read(): Lang {
   return detect();
 }
 
-/** First of the visitor's browser languages that the site speaks, e.g. "uk-UA" → uk, "ja" → ja; English otherwise. */
 function detect(): Lang {
   for (const tag of navigator.languages?.length ? navigator.languages : [navigator.language]) {
     const l = tag?.toLowerCase().split("-")[0];

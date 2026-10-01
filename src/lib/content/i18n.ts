@@ -8,7 +8,6 @@ export const LANGS: { id: Lang; label: string }[] = [
 
 const en = {
   brand: "portfolio",
-  /** Name in reading order: first line and second line of the hero, joined by a space elsewhere */
   nameA: "Max",
   nameB: "Sai",
   contact: "Contact",

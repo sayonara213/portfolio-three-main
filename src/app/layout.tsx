@@ -5,7 +5,6 @@ import { GA_ID } from "@/lib/analytics";
 import { DESCRIPTION, GITHUB, JOB_TITLE, KEYWORDS, LINKEDIN, NAME, NAME_ALT, SITE_URL, SKILLS, TITLE } from "@/lib/site";
 import "./globals.css";
 
-// Display, body and mono faces. Zen Kaku Gothic New covers Japanese; Caveat is the dog caption.
 const unbounded = Unbounded({ variable: "--font-unbounded", subsets: ["latin", "cyrillic"] });
 const onest = Onest({ variable: "--font-onest", subsets: ["latin", "cyrillic"] });
 const jetbrains = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["latin", "cyrillic"], weight: ["400", "600"] });
@@ -32,7 +31,6 @@ export const metadata: Metadata = {
     description: DESCRIPTION,
     locale: "en_US",
     alternateLocale: ["uk_UA", "ja_JP"],
-    // the image itself comes from app/opengraph-image.png
   },
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
   formatDetection: { telephone: false, email: false, address: false },
@@ -43,7 +41,6 @@ export const viewport: Viewport = {
   colorScheme: "dark",
 };
 
-// Structured data: who this site is about, and the site itself.
 const jsonLd = {
   "@context": "https://schema.org",
   "@graph": [

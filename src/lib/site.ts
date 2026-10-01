@@ -12,13 +12,11 @@ export const SITE_URL = (
 ).replace(/\/$/, "");
 
 export const NAME = "Max Sai";
-/** Other spellings people may search for, including the full first name. */
 export const NAME_ALT = ["Maksym Sai", "Макс Сай", "Максим Сай", "サイ マックス", "サイ マクシム"];
 export const JOB_TITLE = "Fullstack developer";
 export const TITLE = "Max Sai - Fullstack Developer Portfolio";
 export const DESCRIPTION =
   "Max Sai, fullstack developer: interactive 3D frontends (Three.js, WebGL, React, Next.js), backend services (Node.js, NestJS) and cloud infrastructure (AWS). Explore the portfolio through a 3D keyboard.";
-/** Skills for search and structured data (`knowsAbout`). */
 export const SKILLS = [
   "fullstack developer",
   "portfolio",

@@ -27,15 +27,11 @@ export const SEG = {
   end: 4.5,
 } as const;
 
-/** Resting time of each section. Scroll to label × innerHeight to land on it. */
 export const LABELS = { hero: 0, stack: 1.1, experience: 2.75, footer: 4.25 } as const;
 
-/** Transitions that finish after a pause (debounced snap). */
 const TRANSITIONS: readonly (readonly [number, number])[] = [SEG.stack, SEG.exp, SEG.footer];
-/** Fraction of a transition you must have crossed (in your scroll direction) for it to complete instead of revert. */
 const COMPLETE_AT = 0.25;
 
-/** Time (viewports) to settle on after a pause: unchanged inside a hold, otherwise the nearest hold edge, biased by direction. */
 function snapTime(t: number, dir: number) {
   const seg = TRANSITIONS.find(([a, b]) => t > a && t < b);
   if (!seg) return t;
@@ -48,13 +44,11 @@ export const BREAKPOINT = 768;
 
 type Options = {
   scene: KeyboardScene;
-  /** element that contains the panels; selectors are scoped to it */
   root: HTMLElement;
   reduced: boolean;
   onProgress: (p: number) => void;
 };
 
-/** Builds the master timeline per breakpoint. Returns the matchMedia so the caller can revert it. */
 export function buildTimeline({ scene, root, reduced, onProgress }: Options) {
   const kb = scene.kb;
   const mm = gsap.matchMedia(root);
@@ -75,7 +69,6 @@ export function buildTimeline({ scene, root, reduced, onProgress }: Options) {
         end: "bottom bottom",
         scrub: reduced ? true : 0.4,
         invalidateOnRefresh: true,
-        // Debounced: after the scroll goes quiet, finish a half-done transition. Touch waits longer for momentum to end.
         snap: reduced
           ? undefined
           : {
@@ -89,7 +82,6 @@ export function buildTimeline({ scene, root, reduced, onProgress }: Options) {
     });
     Object.entries(LABELS).forEach(([n, t]) => tl.addLabel(n, t));
 
-    // hero → stack
     let [a, b]: readonly number[] = SEG.stack;
     tl.fromTo(kb, pose(P.hero), { ...pose(P.stack), duration: b - a, ease: "power2.inOut" }, a)
       .fromTo(kb, { flip: 0 }, { flip: 1, duration: 0.7 }, a + 0.03)
@@ -100,14 +92,12 @@ export function buildTimeline({ scene, root, reduced, onProgress }: Options) {
       .fromTo("#p-stack", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }, a + 0.45)
       .fromTo(".stack-copy", { y: 40 }, { y: 0, duration: 0.3, ease: "power2.out" }, a + 0.45);
 
-    // stack → experience
     [a, b] = SEG.exp;
     tl.to(kb, { ...pose(P.exp), duration: b - a, ease: "power2.inOut" }, a)
       .fromTo(kb, { exp: 0 }, { exp: 1, duration: 0.5 }, a + 0.1)
       .to("#p-stack", { autoAlpha: 0, duration: 0.25 }, a)
       .fromTo(".exp", { autoAlpha: 0, x: 40 }, { autoAlpha: 1, x: 0, duration: 0.3, ease: "power2.out" }, b - 0.3);
 
-    // experience → footer
     [a, b] = SEG.footer;
     tl.to(kb, { ...pose(P.footer), duration: b - a, ease: "power2.inOut" }, a)
       .to(kb, { exp: 0, glow: 0.45, duration: 0.4 }, a)

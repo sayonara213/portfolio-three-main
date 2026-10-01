@@ -1,18 +1,12 @@
 import { ICONS } from "./icons";
 
-// MacBook-style function-key glyphs for the hero's top row (24x24 viewBox, SF Symbols-like line icons).
-
 export type HeroAction = "lang" | "linkedin" | "github" | "contact" | "dog";
 
-/** Which hero caps are function keys, by key index (row 0 = 0..7). The other caps in row 0 stay blank. */
 export const HERO_ACTIONS: Partial<Record<number, HeroAction>> = { 0: "linkedin", 1: "github", 2: "contact", 7: "dog", 24: "lang" };
 
 export type Glyph = {
-  /** Outline paths, stroked at 1.7 units with round caps and joins */
   stroke?: string;
-  /** Solid paths (dots, noses, logos) */
   fill?: string;
-  /** Optical size correction; 1 = the full 24 units */
   scale?: number;
 };
 
