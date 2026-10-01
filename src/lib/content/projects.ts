@@ -8,6 +8,7 @@ export type Project = {
   desc: string;
   descI18n?: Partial<Record<Lang, string>>;
   live?: string;
+  code?: string;
   cover?: string;
   accent: [string, string];
   tech: string[];
@@ -56,6 +57,30 @@ export const PROJECTS: Project[] = [
       "TypeScript",
       "React",
       "Next.js",
+      "Three.js / R3F",
+      "WebGL",
+      "GLSL",
+      "Git",
+      "GitHub",
+      "Claude Code",
+    ],
+  },
+  {
+    title: "2048",
+    desc: "2048 on a Three.js keyboard: tiles are keycaps that slide and merge, with shader effects and swipe or keyboard controls.",
+    descI18n: {
+      uk: "2048 на клавіатурі з Three.js: клавіші ковзають і зливаються, з шейдерними ефектами та керуванням свайпом або з клавіатури.",
+      ja: "Three.js製キーボードで遊ぶ2048。キーキャップのタイルがスライド・合体し、シェーダーエフェクトとスワイプ・キー操作に対応。",
+    },
+    live: "https://2048-three-main.vercel.app",
+    code: "https://github.com/sayonara213/2048-three-main",
+    cover: "/projects/2048.webp",
+    accent: ["#f4a261", "#8c6cff"],
+    tech: [
+      "HTML",
+      "CSS",
+      "TypeScript",
+      "React",
       "Three.js / R3F",
       "WebGL",
       "GLSL",
