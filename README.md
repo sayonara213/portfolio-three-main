@@ -30,9 +30,3 @@ Add `#debug` to the URL for a HUD with the current section, timeline time and ke
 | `src/lib/content/i18n.ts`         | EN / UA / 日本語 strings                                                |
 | `src/components/Portfolio.tsx`    | all markup and the effect that wires scene, timeline and interaction    |
 | `docs/design-spec.md`             | full design spec: poses, timings, colours, acceptance checks            |
-
-## Editing content
-
-- **Projects**: edit `PROJECTS` in `src/lib/content/projects.ts`. `tech` names must match names in `tech.ts`; those keys stay lit. Put real covers in `public/projects/` and set `cover`.
-- **Keys**: edit `TECH` in `tech.ts`. Logos come from Simple Icons (CC0); add new paths to `icons.ts`.
-- **A new section**: see "Adding a section later" in `docs/design-spec.md`.
