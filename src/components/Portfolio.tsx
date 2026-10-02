@@ -11,12 +11,25 @@ import { setLang, useLang } from "@/lib/content/lang-store";
 import { PROJECTS, placeholderCover } from "@/lib/content/projects";
 import { TECH, TECH_FLAT, colorOf, inkFor, type Tech } from "@/lib/content/tech";
 import type { HeroAction } from "@/lib/content/glyphs";
+import { GlassButton } from "@/components/glass/GlassButton";
+import { GlassOrb } from "@/components/glass/GlassOrb";
+import { GlassSegmented } from "@/components/glass/GlassSegmented";
+import { Glass } from "@/components/glass/Glass";
+import { GLASS } from "@/lib/glass/params";
+import { supportsSvgBackdrop, useSvgBackdrop } from "@/lib/glass/support";
+import { createLiquid } from "@/lib/liquid/liquid";
+import { LIQUID, POPOVER, REST, SHEET } from "@/lib/liquid/motion";
+import { useLiquidPresence } from "@/lib/liquid/use-liquid";
 import { KeyboardScene, createNullScene, type Key } from "@/lib/three/keyboard-scene";
-import { LABELS, SEG, buildTimeline } from "@/lib/timeline";
+import { SCROLL_LENGTH, buildTimeline, type Section } from "@/lib/timeline";
 
 const EMAIL = "maxsai567@gmail.com";
 const GITHUB = "https://github.com/sayonara213";
 const LINKEDIN = "https://linkedin.com/in/maksym-sai";
+
+const LANG_OPTIONS = LANGS.map((l) => ({ id: l.id, label: l.label, lang: l.id }));
+
+const KEY_GLASS = { radius: 8, bezel: 10 };
 
 const USED = PROJECTS.map((p) => TECH_FLAT.map((t) => (p.tech.includes(t.name) ? 1 : 0)));
 
@@ -37,6 +50,10 @@ export default function Portfolio() {
   const name = `${t.nameA} ${t.nameB}`;
   const [splashDone, setSplashDone] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
+  const [orbOpen, setOrbOpen] = useState(false);
+  const glassFx = useSvgBackdrop();
+  const orbOpenRef = useRef(orbOpen);
+  useEffect(() => void (orbOpenRef.current = orbOpen), [orbOpen]);
   const [copied, setCopied] = useState(false);
   const [active, setActive] = useState<Active | null>(null);
   const [idx, setIdx] = useState(0);
@@ -48,6 +65,8 @@ export default function Portfolio() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dogRef = useRef<HTMLElement>(null);
   const tipRef = useRef<HTMLDivElement>(null);
+  const tipBodyRef = useRef<HTMLDivElement>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
   const copyRef = useRef<HTMLButtonElement>(null);
   const langRef = useRef(lang);
@@ -64,6 +83,7 @@ export default function Portfolio() {
     setLang(to);
   };
   const contactRef = useRef(contactOpen);
+  const contactShown = useLiquidPresence(sheetRef, contactOpen, SHEET);
   const toggleDogRef = useRef<(on: boolean, via?: string) => void>(() => {});
   const sceneRef = useRef<KeyboardScene | null>(null);
 
@@ -82,6 +102,8 @@ export default function Portfolio() {
   useEffect(() => {
     contactRef.current = contactOpen;
     if (!contactOpen) return;
+    // Off-board pointer: no key hover behind the dialog
+    sceneRef.current?.setPointer(1e6, 0, "mouse");
     openerRef.current = document.activeElement as HTMLElement | null;
     copyRef.current?.focus();
     const html = document.documentElement;
@@ -93,7 +115,7 @@ export default function Portfolio() {
   }, [contactOpen]);
 
   useEffect(() => {
-    const root = rootRef.current!, canvas = canvasRef.current!, tip = tipRef.current!, dog = dogRef.current!;
+    const root = rootRef.current!, canvas = canvasRef.current!, tip = tipRef.current!, tipBody = tipBodyRef.current!, dog = dogRef.current!;
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const legendFont = getComputedStyle(document.documentElement).getPropertyValue("--font-unbounded").trim() || "system-ui";
 
@@ -104,7 +126,7 @@ export default function Portfolio() {
     let scene: KeyboardScene;
     let hasGL = true;
     try {
-      scene = new KeyboardScene(canvas, { legendFont, reducedMotion: reduced, used: USED });
+      scene = new KeyboardScene(canvas, { legendFont, reducedMotion: reduced, used: USED, omitActions: supportsSvgBackdrop() ? [] : ["glass"] });
     } catch {
       hasGL = false;
       scene = createNullScene();
@@ -122,6 +144,21 @@ export default function Portfolio() {
       const x = Math.min(Math.max(pointer[0], 130), innerWidth - 130);
       tip.style.transform = `translate(${x}px, ${pointer[1] - 18}px) translate(-50%,-100%)`;
     };
+    const tipLiquid = createLiquid(tip, POPOVER, POPOVER.labelFollow);
+    let tipOn = false;
+    const showTip = (...content: Node[]) => {
+      tipBody.replaceChildren(...content);
+      placeTip();
+      if (tipOn) return tipLiquid.kick(POPOVER.change);
+      tipOn = true;
+      tip.classList.add("is-on");
+      tipLiquid.snap(POPOVER.appear);
+      tipLiquid.to(REST);
+    };
+    const hideTip = () => {
+      tipOn = false;
+      tip.classList.remove("is-on");
+    };
     let hoverTimer = 0;
     scene.onHoverChange = (k) => {
       clearTimeout(hoverTimer);
@@ -131,33 +168,30 @@ export default function Portfolio() {
       if (k && k.state === "hero" && k.action) {
         const d = I18N[langRef.current];
         const sub = k.action === "lang" ? `${langLabel(langRef.current)} → ${nextLang(langRef.current).label}` : "";
-        tip.replaceChildren(
+        showTip(
           Object.assign(document.createElement("strong"), { textContent: d.keys[k.action] }),
           ...(sub ? [Object.assign(document.createElement("span"), { textContent: sub })] : []),
         );
-        placeTip();
-        tip.style.opacity = "1";
       } else if (k && k.state === "tech") {
         showKey(k);
-        tip.replaceChildren(
+        showTip(
           Object.assign(document.createElement("strong"), { textContent: k.name }),
           Object.assign(document.createElement("span"), { textContent: I18N[langRef.current].cats[k.r] }),
         );
-        placeTip();
-        tip.style.opacity = "1";
-      } else tip.style.opacity = "0";
+      } else hideTip();
     };
 
+    let section: Section = "hero";
     const mm = buildTimeline({
       scene,
       root,
       reduced,
+      onSection: (s) => {
+        section = s;
+        trackOnce("section_view", s, { section: s });
+      },
       onProgress: (p) => {
         scene.scroll = p;
-        const time = p * SEG.end;
-        let section = "hero";
-        for (const [n, v] of Object.entries(LABELS)) if (time >= v - 0.4) section = n;
-        trackOnce("section_view", section, { section });
         for (const d of [25, 50, 75, 100]) if (p * 100 >= d - 0.5) trackOnce("scroll_depth", String(d), { percent: d });
         if (progressRef.current) progressRef.current.style.transform = `scaleX(${p})`;
       },
@@ -181,12 +215,13 @@ export default function Portfolio() {
 
     const onResize = () => scene.resize();
     const onPointerMove = (e: PointerEvent) => {
+      if (contactRef.current || (e.target as Element).closest?.("#orb,.tuner")) return scene.setPointer(1e6, 0, e.pointerType);
       scene.setPointer(e.clientX, e.clientY, e.pointerType);
       pointer = [e.clientX, e.clientY];
       if (scene.hovered) placeTip();
     };
     const onPointerDown = (e: PointerEvent) => {
-      if ((e.target as Element).closest("button,a,#contact,#dog,.exp,.footer-inner")) return;
+      if ((e.target as Element).closest("button,a,#contact,#dog,#orb,.tuner,.exp,.footer-inner")) return;
       scene.setPointer(e.clientX, e.clientY, e.pointerType);
       const k = scene.pick();
       if (k) {
@@ -207,6 +242,13 @@ export default function Portfolio() {
       }
     };
     toggleDogRef.current = toggleDog;
+    const toggleOrb = (via: string) => {
+      if (!supportsSvgBackdrop()) return;
+      const on = !orbOpenRef.current;
+      if (on) track("easter_egg", { name: "glass_orb", via });
+      orbOpenRef.current = on; // so a quick second toggle flips back before React re-renders
+      setOrbOpen(on);
+    };
 
     // Hero function keys (top row). Runs on click, not pointerdown: touch pointerdown doesn't count as a user gesture for window.open.
     const runAction = (a: HeroAction) => {
@@ -226,25 +268,35 @@ export default function Portfolio() {
         track("contact_open", { via: "hero_key" });
         setContactOpen(true);
       }
+      else if (a === "glass") toggleOrb("hero_key");
       else toggleDog(dog.hidden, "hero_key");
     };
     const onClick = (e: MouseEvent) => {
-      if (contactRef.current || (e.target as Element).closest("button,a,#contact,#dog,.exp,.footer-inner")) return;
+      if (contactRef.current || (e.target as Element).closest("button,a,#contact,#dog,#orb,.tuner,.exp,.footer-inner")) return;
       const k = scene.pickAt(e.clientX, e.clientY);
       if (k?.state === "hero" && k.action) runAction(k.action);
     };
     let typed = "";
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        if (contactRef.current) track("contact_close", { via: "escape" });
-        setContactOpen(false);
-        toggleDog(false);
+        // Topmost layer only
+        if (contactRef.current) {
+          track("contact_close", { via: "escape" });
+          setContactOpen(false);
+        } else {
+          toggleDog(false);
+          setOrbOpen(false);
+        }
       }
-      const t = scene.scroll * SEG.end;
-      if ((e.key === "ArrowRight" || e.key === "ArrowLeft") && !contactRef.current && t > SEG.exp[1] - 0.2 && t < SEG.footer[0] + 0.2) go(idxRef.current + (e.key === "ArrowRight" ? 1 : -1), "key");
+      if ((e.target as Element).closest?.("input,textarea,select")) return;
+      if ((e.key === "ArrowRight" || e.key === "ArrowLeft") && !contactRef.current && section === "experience") go(idxRef.current + (e.key === "ArrowRight" ? 1 : -1), "key");
       if (e.metaKey || e.ctrlKey || e.altKey || e.key.length !== 1 || contactRef.current) return;
-      typed = (typed + e.key.toLowerCase()).slice(-3);
-      if (typed === "dog" && dog.hidden) toggleDog(true, "typed_dog");
+      typed = (typed + e.key.toLowerCase()).slice(-5);
+      if (typed.endsWith("dog") && dog.hidden) toggleDog(true, "typed_dog");
+      if (typed === "glass") {
+        toggleOrb("typed_glass");
+        typed = "";
+      }
       const pressed = scene.pressLetter(e.key.toUpperCase());
       if (pressed.length) trackOnce("key_type", e.key.toUpperCase(), { letter: e.key.toUpperCase() });
       const hit = pressed.find((k) => k.state === "tech");
@@ -281,11 +333,8 @@ export default function Portfolio() {
     if (hud) {
       const kb = scene.kb, f = (n: number) => n.toFixed(2);
       const tick = () => {
-        const time = scene.scroll * SEG.end;
-        let label = "hero";
-        for (const [n, v] of Object.entries(LABELS)) if (time >= v - 0.4) label = n;
         hud.textContent =
-          `section  ${label}\ntl time  ${f(time)}\nscroll   ${scene.scroll.toFixed(3)}\n` +
+          `section  ${section}\nscrolled ${f(scene.scroll * SCROLL_LENGTH)} vh\n` +
           `flip     ${f(kb.flip)}  flip2 ${f(kb.flip2)}\nexp      ${f(kb.exp)}  proj ${f(kb.proj)}\nmotion   ${f(kb.motion)}\n` +
           `pos      ${f(kb.x)}, ${f(kb.y)}, ${f(kb.z)}\nrot      ${f(kb.rx)}, ${f(kb.ry)}, ${f(kb.rz)}\nscale    ${f(kb.s)}`;
         hudRaf = requestAnimationFrame(tick);
@@ -346,6 +395,7 @@ export default function Portfolio() {
       removeEventListener("click", onLinkClick);
       removeEventListener("error", onError);
       clearTimeout(hoverTimer);
+      tipLiquid.destroy();
       document.body.style.cursor = "";
       scene.dispose();
       sceneRef.current = null;
@@ -412,16 +462,10 @@ export default function Portfolio() {
           {name}<span>{t.brand}</span>
         </a>
         <div className="header-actions">
-          <button type="button" className="btn-contact" onClick={() => openContact("header")}>
+          <GlassButton variant="primary" className="btn-contact" onClick={() => openContact("header")}>
             {t.contact}
-          </button>
-          <div className="lang" role="group" aria-label={t.aria.lang}>
-            {LANGS.map((l) => (
-              <button type="button" key={l.id} lang={l.id} aria-pressed={lang === l.id} onClick={() => changeLang(l.id, "header")}>
-                {l.label}
-              </button>
-            ))}
-          </div>
+          </GlassButton>
+          <GlassSegmented className="lang" aria-label={t.aria.lang} options={LANG_OPTIONS} value={lang} onChange={(id) => changeLang(id, "header")} />
         </div>
         <div className="progress" ref={progressRef} aria-hidden="true" />
       </header>
@@ -433,7 +477,9 @@ export default function Portfolio() {
             <span className="line">{t.nameA}</span> <span className="line">{t.nameB}</span>
           </h1>
           <p className="hero-hint hero-meta">
-            <kbd aria-hidden="true">S</kbd><kbd aria-hidden="true">A</kbd><kbd aria-hidden="true">I</kbd>
+            {[...(glassFx ? "GLASS" : "SAI")].map((ch, i) => (
+              <kbd key={i} aria-hidden="true">{ch}</kbd>
+            ))}
             <span>{t.hint}</span>
             <kbd className="rgb" aria-hidden="true">↓</kbd>
           </p>
@@ -534,14 +580,14 @@ export default function Portfolio() {
                   {(p.live || p.code) && (
                     <div className="links">
                       {p.live && (
-                        <a className="btn-primary" href={p.live} target="_blank" rel="noopener">
+                        <GlassButton variant="primary" href={p.live} target="_blank" rel="noopener">
                           {t.live} <span aria-hidden="true">↗</span>
-                        </a>
+                        </GlassButton>
                       )}
                       {p.code && (
-                        <a className="btn-ghost" href={p.code} target="_blank" rel="noopener">
+                        <GlassButton href={p.code} target="_blank" rel="noopener">
                           {t.code} <span aria-hidden="true">↗</span>
-                        </a>
+                        </GlassButton>
                       )}
                     </div>
                   )}
@@ -550,17 +596,17 @@ export default function Portfolio() {
               ))}
             </div>
             <div className="exp-nav">
-              <button type="button" className="btn-ghost" aria-label={t.prev} disabled={idx === 0} onClick={() => goRef.current(idx - 1)}>
+              <GlassButton aria-label={t.prev} disabled={idx === 0} onClick={() => goRef.current(idx - 1)}>
                 <span aria-hidden="true">←</span>
-              </button>
+              </GlassButton>
               <div className="dots">
                 {PROJECTS.map((p, i) => (
                   <button key={p.title} type="button" aria-label={`${i + 1} / ${PROJECTS.length}: ${p.title}`} aria-current={i === idx ? "true" : undefined} onClick={() => goRef.current(i, "dots")} />
                 ))}
               </div>
-              <button type="button" className="btn-ghost" aria-label={t.next} disabled={idx === PROJECTS.length - 1} onClick={() => goRef.current(idx + 1)}>
+              <GlassButton aria-label={t.next} disabled={idx === PROJECTS.length - 1} onClick={() => goRef.current(idx + 1)}>
                 <span aria-hidden="true">→</span>
-              </button>
+              </GlassButton>
             </div>
           </div>
         </section>
@@ -572,53 +618,59 @@ export default function Portfolio() {
               <span>{t.footerA}</span> <span className="rainbow-text">{t.footerB}</span>
             </h2>
             <div className="cta-row">
-              <button type="button" className="btn-primary" onClick={() => openContact("footer")}>
+              <GlassButton variant="primary" onClick={() => openContact("footer")}>
                 <span>{t.footerCta}</span> <span aria-hidden="true">→</span>
-              </button>
+              </GlassButton>
               <span className="mail">{EMAIL}</span>
             </div>
             <div className="links">
-              <a className="btn-ghost" href={LINKEDIN} target="_blank" rel="noopener">
+              <GlassButton href={LINKEDIN} target="_blank" rel="noopener">
                 LinkedIn <span aria-hidden="true">↗</span>
-              </a>
-              <a className="btn-ghost" href={GITHUB} target="_blank" rel="noopener">
+              </GlassButton>
+              <GlassButton href={GITHUB} target="_blank" rel="noopener">
                 GitHub <span aria-hidden="true">↗</span>
-              </a>
+              </GlassButton>
             </div>
           </div>
           <div className="footer-bottom">
             <span>© 2026 {name} · Next.js, three.js, GSAP</span>
             <span className="right">
-              <button type="button" className="keybtn" aria-label={t.aria.egg} onClick={() => toggleDogRef.current(!!dogRef.current?.hidden, "psst_button")}>
+              <GlassButton className="keybtn" glass={KEY_GLASS} motion={LIQUID.subtle} aria-label={t.aria.egg} onClick={() => toggleDogRef.current(!!dogRef.current?.hidden, "psst_button")}>
                 psst
-              </button>
-              <button type="button" className="btn-ghost" onClick={toTop}>
+              </GlassButton>
+              <GlassButton onClick={toTop}>
                 <span>{t.toTop}</span> <span aria-hidden="true">↑</span>
-              </button>
+              </GlassButton>
             </span>
           </div>
         </section>
       </main>
       <div id="track" aria-hidden="true" />
 
-      <div id="tip" ref={tipRef} aria-hidden="true" />
+      <div id="tip" ref={tipRef} aria-hidden="true">
+        <Glass params={GLASS.popover} />
+        <div className="tip-body" ref={tipBodyRef} />
+      </div>
 
       <figure id="dog" ref={dogRef} hidden inert={contactOpen}>
         <Image src="/dog.jpg" alt={t.dogAlt} width={372} height={512} />
         <figcaption>{t.dog}</figcaption>
-        <button type="button" aria-label={t.close} onClick={() => toggleDogRef.current(false)}>
+        <GlassButton variant="dark" className="dog-close" aria-label={t.close} onClick={() => toggleDogRef.current(false)}>
           ×
-        </button>
+        </GlassButton>
       </figure>
 
-      <div id="contact" hidden={!contactOpen} onClick={(e) => e.target === e.currentTarget && closeContact("backdrop")}>
-        <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="contact-title" onKeyDown={trapFocus}>
+      {glassFx && <GlassOrb open={orbOpen} inert={contactOpen} />}
+
+      <div id="contact" hidden={!contactShown} data-state={contactOpen ? "open" : "closing"} inert={!contactOpen} onClick={(e) => e.target === e.currentTarget && closeContact("backdrop")}>
+        <div className="sheet" ref={sheetRef} role="dialog" aria-modal="true" aria-labelledby="contact-title" onKeyDown={trapFocus}>
+          <Glass params={GLASS.sheet} />
           <h3 id="contact-title">{t.contactTitle}</h3>
           <div className="row">
             <span ref={mailRef}>{EMAIL}</span>
-            <button type="button" ref={copyRef} onClick={copyMail}>
+            <GlassButton motion={LIQUID.subtle} ref={copyRef} onClick={copyMail}>
               {copied ? t.copied : t.copy}
-            </button>
+            </GlassButton>
           </div>
           <div className="row">
             <a href={GITHUB} target="_blank" rel="noopener">github.com/sayonara213</a>
@@ -628,9 +680,9 @@ export default function Portfolio() {
             <a href={LINKEDIN} target="_blank" rel="noopener">linkedin.com/in/maksym-sai</a>
             <span aria-hidden="true">↗</span>
           </div>
-          <button type="button" className="close" onClick={() => closeContact("button")}>
+          <GlassButton className="close" onClick={() => closeContact("button")}>
             {t.close}
-          </button>
+          </GlassButton>
         </div>
       </div>
     </div>

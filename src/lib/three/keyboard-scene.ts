@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { GLYPHS, HERO_ACTIONS, type HeroAction } from "@/lib/content/glyphs";
+import { GLYPHS, HERO_ACTIONS, RAINBOW, type HeroAction } from "@/lib/content/glyphs";
 import { ICONS } from "@/lib/content/icons";
 import { COLS, HERO_ROWS, NAME_ROWS, ROWS, TECH, inkFor } from "@/lib/content/tech";
 import type { KeyboardState } from "./state";
@@ -38,9 +38,54 @@ export type Key = {
   tex: Partial<Record<LegendState, THREE.Texture | null>>;
   hover: number;
   press: number;
+  rainbow?: RainbowUniforms & { lit: number };
 };
 
 const PAL = 8;
+
+const DRIFT = { y: 0.05, rx: 0.08, ry: 0.05 };
+
+const RAINBOW_CAP = { idle: 0.04, hover: 0.55, press: 2.5, glow: 0.18, density: 0.55 };
+
+type RainbowUniforms = { uFlow: { value: number }; uMix: { value: number }; uGlow: { value: number }; uStops: { value: THREE.Color[] } };
+
+function rainbowCap(mat: THREE.MeshPhysicalMaterial): RainbowUniforms {
+  const uniforms: RainbowUniforms = {
+    uFlow: { value: 0 },
+    uMix: { value: 1 },
+    uGlow: { value: 0 },
+    uStops: { value: RAINBOW.map((c) => new THREE.Color(c)) },
+  };
+  const n = RAINBOW.length;
+  mat.customProgramCacheKey = () => "rainbow-cap";
+  mat.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, uniforms);
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nvarying vec3 vRb;")
+      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvRb = position;");
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        "#include <common>",
+        `#include <common>
+varying vec3 vRb;
+uniform float uFlow, uMix, uGlow;
+uniform vec3 uStops[${n}];
+vec3 rainbow(float t) {
+  float s = fract(t) * ${n}.0;
+  int i = int(floor(s));
+  return mix(uStops[i], uStops[(i + 1) % ${n}], smoothstep(0.0, 1.0, fract(s)));
+}`,
+      )
+      .replace(
+        "#include <color_fragment>",
+        `#include <color_fragment>
+vec3 rb = rainbow((vRb.x - vRb.y) * ${RAINBOW_CAP.density} + vRb.z * 0.3 - uFlow) * (1.0 + uGlow);
+diffuseColor.rgb = mix(diffuseColor.rgb, vColor.rgb * rb, uMix);`,
+      );
+  };
+  mat.needsUpdate = true;
+  return uniforms;
+}
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 const smooth = (t: number) => t * t * (3 - 2 * t);
@@ -75,6 +120,7 @@ export type SceneOptions = {
   legendFont: string;
   reducedMotion: boolean;
   used: number[][];
+  omitActions?: HeroAction[];
 };
 
 export class KeyboardScene {
@@ -83,6 +129,8 @@ export class KeyboardScene {
   readonly keys: Key[] = [];
   readonly kb: KeyboardState = { x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0, s: 1, flip: 0, flip2: 0, exp: 0, proj: 0, glow: 0, motion: 0, intro: 0 };
   scroll = 0;
+  /** Owned by timeline.ts */
+  drift = 0;
   hovered: Key | null = null;
   onHoverChange?: (k: Key | null) => void;
   private langLabel = "EN";
@@ -286,14 +334,20 @@ export class KeyboardScene {
         pivot.add(legend);
         this.board.add(pivot);
         const k: Key = {
-          i: r * COLS + c, r, c, hero, action: HERO_ACTIONS[r * COLS + c], nameCh, ...t,
+          i: r * COLS + c, r, c, hero, action: this.heroAction(r * COLS + c), nameCh, ...t,
           techColor: new THREE.Color(t.color), footColor: nameCh ? WHITE : GRAPHITE,
           pivot, cap, mat, legend, legendMat, state: null, tex: {}, hover: 0, press: 0,
         };
+        if (k.action && GLYPHS[k.action].rainbow) k.rainbow = { ...rainbowCap(mat), lit: 0 };
         cap.userData.k = k;
         this.caps.push(cap);
         this.keys.push(k);
       }
+  }
+
+  private heroAction(i: number) {
+    const a = HERO_ACTIONS[i];
+    return a && !this.opts.omitActions?.includes(a) ? a : undefined;
   }
 
   private canvasTex(draw: (g: CanvasRenderingContext2D) => void) {
@@ -432,16 +486,18 @@ export class KeyboardScene {
 
   private frame(time: number) {
     this.timer.update(time);
-    const t = this.timer.getElapsed();
+    const t = this.timer.getElapsed(), dt = Math.min(this.timer.getDelta(), 0.1);
     const { kb, opts } = this;
     const reduced = opts.reducedMotion;
     const desk = window.innerWidth >= 768, m = reduced ? 0 : kb.motion;
     this.par.x += ((desk && this.ndc.x < 2 ? this.ndc.x : 0) - this.par.x) * 0.05;
     this.par.y += ((desk && this.ndc.x < 2 ? this.ndc.y : 0) - this.par.y) * 0.05;
 
+    const dr = reduced ? 0 : this.drift, vh = this.view().h;
+
     const b = this.board;
-    b.position.set(kb.x, kb.y + Math.sin(t * 0.9) * 0.06 * m, kb.z);
-    b.rotation.set(kb.rx - this.par.y * 0.06 * m, kb.ry + this.par.x * 0.1 * m, kb.rz);
+    b.position.set(kb.x, kb.y + Math.sin(t * 0.9) * 0.06 * m + dr * DRIFT.y * vh, kb.z);
+    b.rotation.set(kb.rx - this.par.y * 0.06 * m + dr * DRIFT.rx, kb.ry + this.par.x * 0.1 * m + dr * DRIFT.ry, kb.rz);
     b.scale.setScalar(kb.s * (0.82 + 0.18 * kb.intro));
     this.sun.position.set(b.position.x + 3, b.position.y + 9, b.position.z + 11);
     this.sun.target.position.copy(b.position);
@@ -485,6 +541,13 @@ export class KeyboardScene {
         0.32 + (reduced ? 0 : (Math.sin(p1 * Math.PI) + Math.sin(p2 * Math.PI)) * 1.3) +
         k.hover * 0.16 - k.press * 0.16 - grey * 0.2 + kb.exp * u * 0.06;
       k.legend.rotation.z = kb.rz < -1 ? Math.PI / 2 : 0;
+      const rb = k.rainbow;
+      if (rb) {
+        rb.lit += ((k === this.hovered ? 1 : 0) - rb.lit) * 0.12;
+        if (!reduced) rb.uFlow.value += dt * (RAINBOW_CAP.idle + rb.lit * RAINBOW_CAP.hover + k.press * RAINBOW_CAP.press);
+        rb.uGlow.value = rb.lit * RAINBOW_CAP.glow;
+        rb.uMix.value = (1 - p1) * (1 - p2);
+      }
     }
 
     this.renderer.render(this.scene, this.camera);
@@ -512,6 +575,7 @@ export function createNullScene(): KeyboardScene {
     kb: { x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0, s: 1, flip: 0, flip2: 0, exp: 0, proj: 0, glow: 0, motion: 0, intro: 1 },
     keys: [],
     scroll: 0,
+    drift: 0,
     hovered: null,
     view: () => ({ w: 16, h: 9 }),
     resize: noop,

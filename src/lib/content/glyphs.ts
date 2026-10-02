@@ -1,13 +1,17 @@
 import { ICONS } from "./icons";
 
-export type HeroAction = "lang" | "linkedin" | "github" | "contact" | "dog";
+export type HeroAction = "lang" | "linkedin" | "github" | "contact" | "dog" | "glass";
 
-export const HERO_ACTIONS: Partial<Record<number, HeroAction>> = { 0: "linkedin", 1: "github", 2: "contact", 7: "dog", 24: "lang" };
+export const HERO_ACTIONS: Partial<Record<number, HeroAction>> = { 0: "linkedin", 1: "github", 2: "contact", 7: "dog", 24: "lang", 31: "glass" };
+
+// Mirrors --rainbow in globals.css
+export const RAINBOW = ["#ff5d6c", "#ffa94d", "#ffe45c", "#5ee08a", "#4fb8ff", "#8c6cff", "#ff6ad5"];
 
 export type Glyph = {
   stroke?: string;
   fill?: string;
   scale?: number;
+  rainbow?: boolean;
 };
 
 export const GLYPHS: Record<HeroAction, Glyph> = {
@@ -19,6 +23,11 @@ export const GLYPHS: Record<HeroAction, Glyph> = {
     fill: "M8 7.1a.9.9 0 1 1 0 1.8.9.9 0 0 1 0-1.8z",
   },
   github: { fill: ICONS.github, scale: 0.82 },
+  glass: {
+    stroke: "M10.5 3.5a7 7 0 1 1 0 14 7 7 0 0 1 0-14zM15.6 15.6l4.9 4.9M7 9.6a3.8 3.8 0 0 1 2.6-2.6",
+    scale: 0.9,
+    rainbow: true,
+  },
   contact: {
     stroke: "M5.8 5.5h12.4A2.8 2.8 0 0 1 21 8.3v7.4a2.8 2.8 0 0 1-2.8 2.8H5.8A2.8 2.8 0 0 1 3 15.7V8.3a2.8 2.8 0 0 1 2.8-2.8zM4 7.2l8 5.8 8-5.8",
   },

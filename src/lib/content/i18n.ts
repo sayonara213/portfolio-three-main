@@ -56,6 +56,7 @@ const en = {
     github: "GitHub",
     contact: "Contact",
     dog: "psst",
+    glass: "Liquid glass",
   },
 };
 
@@ -145,6 +146,7 @@ export const I18N: Record<Lang, Dict> = {
       github: "GitHub",
       contact: "Контакт",
       dog: "псс",
+      glass: "Рідке скло",
     },
   },
   ja: {
@@ -235,6 +237,7 @@ export const I18N: Record<Lang, Dict> = {
       github: "GitHub",
       contact: "連絡先",
       dog: "ねえ",
+      glass: "リキッドガラス",
     },
   },
 };

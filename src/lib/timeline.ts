@@ -8,82 +8,59 @@ gsap.registerPlugin(ScrollTrigger);
 // iOS/Android toolbars resize the viewport while scrolling; don't re-measure the whole timeline for that.
 ScrollTrigger.config({ ignoreMobileResize: true });
 
-/*
- * SCROLL TIMELINE: scrubbed; after a pause it finishes a half-done transition (see `snapTime`); pauses inside a hold never move.
- * 1 unit of time = 1 viewport of scroll (#track is 550svh). Transitions start the moment you leave a section and are short; the rest is hold.
- * The Experience carousel is NOT scroll-driven: slides change with buttons, swipe or arrow keys (Portfolio.tsx) and drive `kb.proj`.
- *   0.00        hero (locked)
- *   0.00-0.75   → stack: pose, flip wave white→brand, rim on, stack copy in
- *   0.75-1.50   hold stack
- *   1.50-2.25   → experience: keyboard to the left, unused keys grey + pressed, carousel in
- *   2.25-3.25   hold experience (carousel is interactive)
- *   3.25-4.00   → footer: board to background, second flip wave to name caps, scrim + footer copy
- *   4.00-4.50   hold footer
- */
-export const SEG = {
-  stack: [0, 0.75],
-  exp: [1.5, 2.25],
-  footer: [3.25, 4],
-  end: 4.5,
-} as const;
+// Not scrubbed: scroll only picks a section, which plays its transition, so the page never rests between states.
+// The carousel isn't scroll-driven either: Portfolio.tsx drives `kb.proj`.
+export const SECTIONS = ["hero", "stack", "experience", "footer"] as const;
+export type Section = (typeof SECTIONS)[number];
 
-export const LABELS = { hero: 0, stack: 1.1, experience: 2.75, footer: 4.25 } as const;
+const STEP = 0.75;
+const LABELS: Record<Section, number> = { hero: 0, stack: STEP, experience: STEP * 2, footer: STEP * 3 };
 
-const TRANSITIONS: readonly (readonly [number, number])[] = [SEG.stack, SEG.exp, SEG.footer];
-const COMPLETE_AT = 0.25;
+// In viewports scrolled; must match #track (550svh = 4.5 viewports of scroll)
+export const SCROLL_LENGTH = 4.5;
+const STARTS: Record<Section, number> = { hero: 0, stack: 0.5, experience: 1.85, footer: 3.2 };
 
-function snapTime(t: number, dir: number) {
-  const seg = TRANSITIONS.find(([a, b]) => t > a && t < b);
-  if (!seg) return t;
-  const f = (t - seg[0]) / (seg[1] - seg[0]);
-  const forward = dir >= 0 ? f > COMPLETE_AT : f >= 1 - COMPLETE_AT;
-  return seg[forward ? 1 : 0];
-}
+const SECONDS_PER_STEP = 1.1;
+const CUT = { out: 0.15, in: 0.3, land: 0.5, landSeconds: 0.75 };
+const DRIFT_FOLLOW = 0.35;
+const CUT_TARGETS = "#gl, main";
 
 export const BREAKPOINT = 768;
+
+export function locate(progress: number): { section: Section; local: number } {
+  const v = progress * SCROLL_LENGTH;
+  let i = SECTIONS.length - 1;
+  while (i > 0 && v < STARTS[SECTIONS[i]]) i--;
+  const start = STARTS[SECTIONS[i]], end = i < SECTIONS.length - 1 ? STARTS[SECTIONS[i + 1]] : SCROLL_LENGTH;
+  return { section: SECTIONS[i], local: Math.min(Math.max((v - start) / (end - start), 0), 1) };
+}
 
 type Options = {
   scene: KeyboardScene;
   root: HTMLElement;
   reduced: boolean;
   onProgress: (p: number) => void;
+  onSection: (s: Section) => void;
 };
 
-export function buildTimeline({ scene, root, reduced, onProgress }: Options) {
+export function buildTimeline({ scene, root, reduced, onProgress, onSection }: Options) {
   const kb = scene.kb;
+  let section: Section = "hero";
   const mm = gsap.matchMedia(root);
   mm.add({ desktop: `(min-width: ${BREAKPOINT}px)`, mobile: `(max-width: ${BREAKPOINT - 1}px)` }, (ctx) => {
     const P = ctx.conditions?.desktop ? DESKTOP : MOBILE;
-    // Function-based values are re-read on every ScrollTrigger refresh (resize), so poses follow the viewport.
+    // Function-based values are re-read when the timeline is invalidated (resize), so poses follow the viewport.
     const pose = (fn: (v: ReturnType<KeyboardScene["view"]>) => Pose) => {
       const o: Record<string, () => number> = {};
       (["x", "y", "z", "rx", "ry", "rz", "s"] as const).forEach((k) => (o[k] = () => fn(scene.view())[k]));
       return o;
     };
 
-    const tl = gsap.timeline({
-      defaults: { ease: "none" },
-      scrollTrigger: {
-        trigger: root.querySelector("#track"),
-        start: "top top",
-        end: "bottom bottom",
-        scrub: reduced ? true : 0.4,
-        invalidateOnRefresh: true,
-        snap: reduced
-          ? undefined
-          : {
-              snapTo: (p: number, st?: ScrollTrigger) => snapTime(p * SEG.end, st?.direction ?? 1) / SEG.end,
-              delay: matchMedia("(pointer: coarse)").matches ? 0.35 : 0.25,
-              duration: { min: 0.4, max: 0.6 },
-              ease: "power2.out",
-            },
-        onUpdate: (st) => onProgress(st.progress),
-      },
-    });
+    const tl = gsap.timeline({ paused: true, defaults: { ease: "none" } });
     Object.entries(LABELS).forEach(([n, t]) => tl.addLabel(n, t));
 
-    let [a, b]: readonly number[] = SEG.stack;
-    tl.fromTo(kb, pose(P.hero), { ...pose(P.stack), duration: b - a, ease: "power2.inOut" }, a)
+    let a = LABELS.hero;
+    tl.fromTo(kb, pose(P.hero), { ...pose(P.stack), duration: STEP, ease: "power2.inOut" }, a)
       .fromTo(kb, { flip: 0 }, { flip: 1, duration: 0.7 }, a + 0.03)
       .fromTo(kb, { glow: 0 }, { glow: 1, duration: 0.3 }, a + 0.45)
       .fromTo(kb, { motion: 0 }, { motion: 1, duration: 0.3 }, a + 0.4)
@@ -92,23 +69,124 @@ export function buildTimeline({ scene, root, reduced, onProgress }: Options) {
       .fromTo("#p-stack", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }, a + 0.45)
       .fromTo(".stack-copy", { y: 40 }, { y: 0, duration: 0.3, ease: "power2.out" }, a + 0.45);
 
-    [a, b] = SEG.exp;
-    tl.to(kb, { ...pose(P.exp), duration: b - a, ease: "power2.inOut" }, a)
+    a = LABELS.stack;
+    tl.to(kb, { ...pose(P.exp), duration: STEP, ease: "power2.inOut" }, a)
       .fromTo(kb, { exp: 0 }, { exp: 1, duration: 0.5 }, a + 0.1)
       .to("#p-stack", { autoAlpha: 0, duration: 0.25 }, a)
-      .fromTo(".exp", { autoAlpha: 0, x: 40 }, { autoAlpha: 1, x: 0, duration: 0.3, ease: "power2.out" }, b - 0.3);
+      .fromTo(".exp", { autoAlpha: 0, x: 40 }, { autoAlpha: 1, x: 0, duration: 0.3, ease: "power2.out" }, a + STEP - 0.3);
 
-    [a, b] = SEG.footer;
-    tl.to(kb, { ...pose(P.footer), duration: b - a, ease: "power2.inOut" }, a)
+    a = LABELS.experience;
+    tl.to(kb, { ...pose(P.footer), duration: STEP, ease: "power2.inOut" }, a)
       .to(kb, { exp: 0, glow: 0.45, duration: 0.4 }, a)
       .fromTo(kb, { flip2: 0 }, { flip2: 1, duration: 0.7 }, a + 0.03)
       .to(".exp", { autoAlpha: 0, x: 40, duration: 0.2 }, a)
       .fromTo("#scrim", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.4 }, a + 0.25)
       .fromTo("#p-footer", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }, a + 0.4)
-      .fromTo(".footer-inner", { y: 40 }, { y: 0, duration: 0.3, ease: "power2.out" }, a + 0.4)
-      .to({}, { duration: 0 }, SEG.end);
+      .fromTo(".footer-inner", { y: 40 }, { y: 0, duration: 0.3, ease: "power2.out" }, a + 0.4);
 
-    return () => tl.kill();
+    // matchMedia rebuilds on breakpoint change: land on the current section without animating
+    tl.progress(1).progress(0).seek(LABELS[section]);
+
+    let tween: gsap.core.Tween | null = null;
+    let cut: gsap.core.Timeline | null = null;
+
+    // Hand drift off on the transition's clock and ease (poses are power2.inOut), blending toward the live scroll
+    // position, or the board visibly drops before / moves after the transition.
+    let local = 0, handoff = false;
+    let driftTween: gsap.core.Tween | null = null;
+    const follow = () => {
+      handoff = false;
+      driftTween?.kill();
+      driftTween = gsap.to(scene, { drift: local, duration: DRIFT_FOLLOW, ease: "power2.out" });
+    };
+    const handOff = (duration: number) => {
+      handoff = true;
+      driftTween?.kill();
+      const from = scene.drift, blend = { k: 0 };
+      driftTween = gsap.to(blend, {
+        k: 1,
+        duration,
+        ease: "power2.inOut",
+        onUpdate: () => void (scene.drift = from + (local - from) * blend.k),
+        onComplete: () => void (handoff = false),
+      });
+    };
+    const stop = () => {
+      tween?.kill();
+      if (cut) {
+        cut.kill();
+        cut = null;
+        gsap.to(CUT_TARGETS, { opacity: 1, duration: CUT.in, overwrite: true });
+      }
+    };
+    const play = (to: Section) => {
+      stop();
+      const target = LABELS[to];
+      const steps = Math.abs(target - tl.time()) / STEP;
+      if (reduced || !steps) {
+        tl.seek(target);
+        follow();
+        return;
+      }
+      if (steps < 1.5) {
+        const duration = steps * SECONDS_PER_STEP;
+        tween = tl.tweenTo(target, { duration, ease: "none" });
+        handOff(duration);
+        return;
+      }
+      const landFrom = target - Math.sign(target - tl.time()) * STEP * CUT.land;
+      cut = gsap
+        .timeline({
+          onComplete: () => {
+            cut = null;
+            follow(); // scroll is ignored during the fade-in
+          },
+        })
+        .to(CUT_TARGETS, { opacity: 0, duration: CUT.out, ease: "power1.in", overwrite: true })
+        .add(() => {
+          tl.seek(landFrom);
+          tween = tl.tweenTo(target, { duration: CUT.landSeconds, ease: "power1.out" });
+          driftTween?.kill();
+          scene.drift = local;
+          handoff = false;
+        })
+        .to(CUT_TARGETS, { opacity: 1, duration: CUT.in, ease: "power1.out" });
+    };
+
+    const st = ScrollTrigger.create({
+      trigger: root.querySelector("#track"),
+      start: "top top",
+      end: "bottom bottom",
+      onUpdate: (self) => {
+        const where = locate(self.progress);
+        const next = where.section;
+        local = where.local;
+        onProgress(self.progress);
+        if (next === section) {
+          if (!handoff && !cut) follow();
+          return;
+        }
+        section = next;
+        onSection(next);
+        play(next);
+      },
+    });
+
+    // Seek to 0 before invalidating so `to` tweens re-record their start values in order, not from the current state.
+    const onRefresh = () => {
+      const t = tween?.isActive() || cut ? LABELS[section] : tl.time();
+      stop();
+      tl.seek(0).invalidate().progress(1).progress(0).seek(t);
+    };
+    ScrollTrigger.addEventListener("refresh", onRefresh);
+
+    return () => {
+      ScrollTrigger.removeEventListener("refresh", onRefresh);
+      stop();
+      driftTween?.kill();
+      st.kill();
+      tl.kill();
+    };
   });
   return mm;
 }
