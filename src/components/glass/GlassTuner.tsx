@@ -61,7 +61,7 @@ export function GlassTuner({ params, onParams, size, onSize, onReset, onClose, s
   );
 
   return (
-    <div ref={ref} className="tuner" role="dialog" aria-label="Liquid glass settings" data-state={closing ? "closing" : "open"} inert={closing}>
+    <div ref={ref} className="tuner glass-card" role="dialog" aria-label="Liquid glass settings" data-presence={closing ? "closing" : "open"} inert={closing}>
       <Glass params={GLASS.panel} />
       <div className="tuner-head">
         <strong className="rainbow-text">Liquid glass</strong>

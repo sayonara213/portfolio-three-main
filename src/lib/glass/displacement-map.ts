@@ -1,5 +1,5 @@
 // R/G encode an inward displacement (128 = none): strongest at the edge, fading to 0 across the bezel, like a lens rim.
-export function createDisplacementMap(width: number, height: number, radius: number, bezel: number): string {
+function createDisplacementMap(width: number, height: number, radius: number, bezel: number): string {
   const w = Math.max(1, Math.round(width));
   const h = Math.max(1, Math.round(height));
   const r = Math.min(radius, w / 2, h / 2);
@@ -52,4 +52,18 @@ export function createDisplacementMap(width: number, height: number, radius: num
 
   ctx.putImageData(img, 0, 0);
   return canvas.toDataURL();
+}
+
+const cache = new Map<string, string>();
+const CACHE_SIZE = 48;
+
+/** Cached by geometry: buttons of the same size share one map. */
+export function getDisplacementMap(width: number, height: number, radius: number, bezel: number): { key: string; url: string } {
+  const key = `${Math.round(width)}x${Math.round(height)}r${radius}b${bezel}`;
+  let url = cache.get(key);
+  if (url) cache.delete(key); // re-insert as most recent
+  else url = createDisplacementMap(width, height, radius, bezel);
+  cache.set(key, url);
+  if (cache.size > CACHE_SIZE) cache.delete(cache.keys().next().value!);
+  return { key, url };
 }

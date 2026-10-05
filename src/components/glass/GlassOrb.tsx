@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { listen } from "@/lib/dom";
 import { GLASS, type GlassParams } from "@/lib/glass/params";
 import { useSvgBackdrop } from "@/lib/glass/support";
 import { prefersReducedMotion } from "@/lib/liquid/liquid";
 import { ORB, PANEL, type DragMotion } from "@/lib/liquid/motion";
 import { createSprings } from "@/lib/liquid/spring";
 import { useLiquidPresence } from "@/lib/liquid/use-liquid";
+import { usePresence } from "@/lib/use-presence";
 import { Glass } from "./Glass";
 import { GlassTuner } from "./GlassTuner";
 
@@ -27,8 +29,7 @@ export function GlassOrb({ open, size: initialSize = 120, glass: initialGlass = 
   const panelRef = useRef<HTMLDivElement>(null);
   const setOpen = useRef<(open: boolean) => void>(() => {});
   const pos = useRef({ x: 0, y: 0 });
-  const [shown, setShown] = useState(open);
-  if (open && !shown) setShown(true);
+  const shown = usePresence(open, motion.exitMs);
 
   const [params, setParams] = useState(initialGlass);
   const [size, setSize] = useState(initialSize);
@@ -102,18 +103,12 @@ export function GlassOrb({ open, size: initialSize = 120, glass: initialGlass = 
     };
     const onResize = () => springs.to({ px: clampX(springs.springs.px.target), py: clampY(springs.springs.py.target) });
 
-    el.addEventListener("pointerdown", onDown);
-    el.addEventListener("pointermove", onMove);
-    el.addEventListener("pointerup", onUp);
-    el.addEventListener("pointercancel", onUp);
-    addEventListener("resize", onResize);
+    const unlisten = listen(el, { pointerdown: onDown, pointermove: onMove, pointerup: onUp, pointercancel: onUp });
+    const unlistenWin = listen<WindowEventMap>(window, { resize: onResize });
     return () => {
       springs.destroy();
-      el.removeEventListener("pointerdown", onDown);
-      el.removeEventListener("pointermove", onMove);
-      el.removeEventListener("pointerup", onUp);
-      el.removeEventListener("pointercancel", onUp);
-      removeEventListener("resize", onResize);
+      unlisten();
+      unlistenWin();
     };
   }, [shown, motion]);
 
@@ -123,12 +118,7 @@ export function GlassOrb({ open, size: initialSize = 120, glass: initialGlass = 
     if (el) el.style.transform = `translate(${pos.current.x - size / 2}px, ${pos.current.y - size / 2}px)`;
   }, [size]);
 
-  useEffect(() => {
-    setOpen.current(open);
-    if (open) return;
-    const t = setTimeout(() => setShown(false), motion.exitMs);
-    return () => clearTimeout(t);
-  }, [open, motion]);
+  useEffect(() => setOpen.current(open), [open]);
 
   useLayoutEffect(() => {
     const p = panelRef.current;
@@ -145,27 +135,27 @@ export function GlassOrb({ open, size: initialSize = 120, glass: initialGlass = 
   // Capture: runs before the page's Esc handler, which would close the orb too
   useEffect(() => {
     if (!panelOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      e.stopImmediatePropagation();
-      setPanel(false);
-    };
-    const onDown = (e: PointerEvent) => {
-      const t = e.target as Node;
-      if (!panelRef.current?.contains(t) && !ref.current?.contains(t)) setPanel(false);
-    };
-    addEventListener("keydown", onKey, true);
-    addEventListener("pointerdown", onDown, true);
-    return () => {
-      removeEventListener("keydown", onKey, true);
-      removeEventListener("pointerdown", onDown, true);
-    };
+    return listen<WindowEventMap>(
+      window,
+      {
+        keydown: (e) => {
+          if (e.key !== "Escape") return;
+          e.stopImmediatePropagation();
+          setPanel(false);
+        },
+        pointerdown: (e) => {
+          const t = e.target as Node;
+          if (!panelRef.current?.contains(t) && !ref.current?.contains(t)) setPanel(false);
+        },
+      },
+      true,
+    );
   }, [panelOpen]);
 
   if (!shown) return null;
   return (
     <>
-      <div ref={ref} id="orb" data-state={open ? "open" : "closing"} style={{ width: size, height: size }} inert={inert} aria-hidden="true">
+      <div ref={ref} id="orb" data-presence={open ? "open" : "closing"} style={{ width: size, height: size }} inert={inert} aria-hidden="true">
         <Glass params={params} />
       </div>
       {panelShown && (

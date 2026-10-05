@@ -94,14 +94,17 @@ export function buildTimeline({ scene, root, reduced, onProgress, onSection }: O
     // position, or the board visibly drops before / moves after the transition.
     let local = 0, handoff = false;
     let driftTween: gsap.core.Tween | null = null;
+    // One retargeted tween, not a new one per scroll event
+    const followTo = gsap.quickTo(scene, "drift", { duration: DRIFT_FOLLOW, ease: "power2.out" });
     const follow = () => {
       handoff = false;
       driftTween?.kill();
-      driftTween = gsap.to(scene, { drift: local, duration: DRIFT_FOLLOW, ease: "power2.out" });
+      followTo(local, scene.drift);
     };
     const handOff = (duration: number) => {
       handoff = true;
       driftTween?.kill();
+      followTo.tween.pause();
       const from = scene.drift, blend = { k: 0 };
       driftTween = gsap.to(blend, {
         k: 1,
@@ -147,6 +150,7 @@ export function buildTimeline({ scene, root, reduced, onProgress, onSection }: O
           tl.seek(landFrom);
           tween = tl.tweenTo(target, { duration: CUT.landSeconds, ease: "power1.out" });
           driftTween?.kill();
+          followTo.tween.pause();
           scene.drift = local;
           handoff = false;
         })
@@ -184,6 +188,7 @@ export function buildTimeline({ scene, root, reduced, onProgress, onSection }: O
       ScrollTrigger.removeEventListener("refresh", onRefresh);
       stop();
       driftTween?.kill();
+      followTo.tween.kill();
       st.kill();
       tl.kill();
     };

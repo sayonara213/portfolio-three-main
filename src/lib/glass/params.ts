@@ -36,3 +36,6 @@ export const GLASS = {
 } satisfies Record<string, GlassParams>;
 
 export type GlassVariant = keyof typeof GLASS;
+
+// The filter re-runs every frame over the animating 3D canvas: skipping the RGB split makes it 1 pass instead of 3
+export const OVER_CANVAS = { aberration: 0 } satisfies Partial<GlassParams>;

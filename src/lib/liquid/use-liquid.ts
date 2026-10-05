@@ -1,4 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, type RefObject } from "react";
+import { listen } from "@/lib/dom";
+import { usePresence } from "@/lib/use-presence";
 import { createLiquid, type LiquidController } from "./liquid";
 import { REST, type LiquidMotion, type PresenceMotion } from "./motion";
 
@@ -16,33 +18,28 @@ export function useLiquid(ref: RefObject<HTMLElement | null>, motion: LiquidMoti
       liquid.to(press ? motion.press : hover ? motion.hover : REST);
     };
 
-    // Touch has no hover: it would stick after the tap
-    const onEnter = (e: PointerEvent) => e.pointerType !== "touch" && set(true, press);
-    const onLeave = () => set(false, false);
-    const onDown = (e: PointerEvent) => e.isPrimary && set(hover, true);
-    const onUp = () => set(hover, false);
-    const onKeyDown = (e: KeyboardEvent) => !e.repeat && (e.key === "Enter" || e.key === " ") && set(hover, true);
-    const listeners = [
-      ["pointerenter", onEnter],
-      ["pointerleave", onLeave],
-      ["pointerdown", onDown],
-      ["pointerup", onUp],
-      ["pointercancel", onLeave],
-      ["keydown", onKeyDown],
-      ["keyup", onUp],
-      ["blur", onUp],
-    ] as const;
-    listeners.forEach(([type, fn]) => el.addEventListener(type, fn as EventListener));
+    const leave = () => set(false, false);
+    const up = () => set(hover, false);
+    const unlisten = listen(el, {
+      // Touch has no hover: it would stick after the tap
+      pointerenter: (e) => e.pointerType !== "touch" && set(true, press),
+      pointerleave: leave,
+      pointerdown: (e) => e.isPrimary && set(hover, true),
+      pointerup: up,
+      pointercancel: leave,
+      keydown: (e) => !e.repeat && (e.key === "Enter" || e.key === " ") && set(hover, true),
+      keyup: up,
+      blur: up,
+    });
     return () => {
       liquid.destroy();
-      listeners.forEach(([type, fn]) => el.removeEventListener(type, fn as EventListener));
+      unlisten();
     };
   }, [ref, motion]);
 }
 
 export function useLiquidPresence(ref: RefObject<HTMLElement | null>, open: boolean, motion: PresenceMotion): boolean {
-  const [shown, setShown] = useState(open);
-  if (open && !shown) setShown(true);
+  const shown = usePresence(open, motion.exitMs);
   const liquid = useRef<LiquidController | null>(null);
 
   // Layout effect: collapse before the first frame paints, so it never flashes at full size
@@ -69,8 +66,6 @@ export function useLiquidPresence(ref: RefObject<HTMLElement | null>, open: bool
     }
     l.configure({ x: motion.exitSpring, y: motion.exitSpring });
     l.to(motion.exit);
-    const t = setTimeout(() => setShown(false), motion.exitMs);
-    return () => clearTimeout(t);
   }, [open, motion]);
 
   return shown;

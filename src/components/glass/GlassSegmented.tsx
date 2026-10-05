@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
+import { listen } from "@/lib/dom";
 import { GLASS, type GlassParams } from "@/lib/glass/params";
 import { prefersReducedMotion } from "@/lib/liquid/liquid";
 import { SEGMENT, type SegmentMotion } from "@/lib/liquid/motion";
@@ -64,18 +65,12 @@ export function GlassSegmented<T extends string>({ options, value, onChange, cla
     ro.observe(el);
 
     const press = (on: boolean) => () => !reduced && springs.to({ s: on ? motion.press : 1 });
-    const down = press(true), up = press(false);
-    el.addEventListener("pointerdown", down);
-    el.addEventListener("pointerup", up);
-    el.addEventListener("pointerleave", up);
-    el.addEventListener("pointercancel", up);
+    const up = press(false);
+    const unlisten = listen(el, { pointerdown: press(true), pointerup: up, pointerleave: up, pointercancel: up });
     return () => {
       ro.disconnect();
       springs.destroy();
-      el.removeEventListener("pointerdown", down);
-      el.removeEventListener("pointerup", up);
-      el.removeEventListener("pointerleave", up);
-      el.removeEventListener("pointercancel", up);
+      unlisten();
     };
   }, [motion]);
 

@@ -4,18 +4,19 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { ICONS } from "@/lib/content/icons";
 import { I18N, LANGS, type Lang } from "@/lib/content/i18n";
 import { setUserProps, track, trackOnce } from "@/lib/analytics";
 import { setLang, useLang } from "@/lib/content/lang-store";
 import { PROJECTS, placeholderCover } from "@/lib/content/projects";
-import { TECH, TECH_FLAT, colorOf, inkFor, type Tech } from "@/lib/content/tech";
+import { TECH_FLAT, colorOf } from "@/lib/content/tech";
 import type { HeroAction } from "@/lib/content/glyphs";
 import { GlassButton } from "@/components/glass/GlassButton";
+import { StackLegend, activeTech } from "@/components/StackLegend";
 import { GlassOrb } from "@/components/glass/GlassOrb";
 import { GlassSegmented } from "@/components/glass/GlassSegmented";
 import { Glass } from "@/components/glass/Glass";
-import { GLASS } from "@/lib/glass/params";
+import { listen } from "@/lib/dom";
+import { GLASS, OVER_CANVAS } from "@/lib/glass/params";
 import { supportsSvgBackdrop, useSvgBackdrop } from "@/lib/glass/support";
 import { createLiquid } from "@/lib/liquid/liquid";
 import { LIQUID, POPOVER, REST, SHEET } from "@/lib/liquid/motion";
@@ -27,22 +28,17 @@ const EMAIL = "maxsai567@gmail.com";
 const GITHUB = "https://github.com/sayonara213";
 const LINKEDIN = "https://linkedin.com/in/maksym-sai";
 
+const LANG_TRACK = { ...GLASS.clear, ...OVER_CANVAS };
+const LANG_BLOB = { ...GLASS.primary, ...OVER_CANVAS };
 const LANG_OPTIONS = LANGS.map((l) => ({ id: l.id, label: l.label, lang: l.id }));
 
 const KEY_GLASS = { radius: 8, bezel: 10 };
 
 const USED = PROJECTS.map((p) => TECH_FLAT.map((t) => (p.tech.includes(t.name) ? 1 : 0)));
 
-type Active = Tech & { r: number };
-
 const nextLang = (l: string) => LANGS[(LANGS.findIndex((x) => x.id === l) + 1) % LANGS.length];
 const langLabel = (l: string) => LANGS.find((x) => x.id === l)?.label ?? "EN";
 
-const Logo = ({ slug, fill }: { slug: string; fill: string }) => (
-  <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path fill={fill} d={ICONS[slug]} />
-  </svg>
-);
 
 export default function Portfolio() {
   const lang = useLang();
@@ -55,7 +51,6 @@ export default function Portfolio() {
   const orbOpenRef = useRef(orbOpen);
   useEffect(() => void (orbOpenRef.current = orbOpen), [orbOpen]);
   const [copied, setCopied] = useState(false);
-  const [active, setActive] = useState<Active | null>(null);
   const [idx, setIdx] = useState(0);
   const idxRef = useRef(0);
   const swipeX = useRef<number | null>(null);
@@ -137,7 +132,7 @@ export default function Portfolio() {
     scene.setLangLabel(langLabel(langRef.current));
     setUserProps({ reduced_motion: reduced, pointer: matchMedia("(pointer: coarse)").matches ? "touch" : "mouse", layout: innerWidth >= 768 ? "desktop" : "mobile" });
     const showKey = (k: Key) => {
-      if (k.state === "tech") setActive({ slug: k.slug, name: k.name, color: k.color, note: k.note, r: k.r });
+      if (k.state === "tech") activeTech.set({ slug: k.slug, name: k.name, color: k.color, note: k.note, r: k.r });
     };
     let pointer = [0, 0];
     const placeTip = () => {
@@ -151,13 +146,13 @@ export default function Portfolio() {
       placeTip();
       if (tipOn) return tipLiquid.kick(POPOVER.change);
       tipOn = true;
-      tip.classList.add("is-on");
+      tip.dataset.presence = "open";
       tipLiquid.snap(POPOVER.appear);
       tipLiquid.to(REST);
     };
     const hideTip = () => {
       tipOn = false;
-      tip.classList.remove("is-on");
+      tip.dataset.presence = "closing";
     };
     let hoverTimer = 0;
     scene.onHoverChange = (k) => {
@@ -302,11 +297,10 @@ export default function Portfolio() {
       const hit = pressed.find((k) => k.state === "tech");
       if (hit) showKey(hit);
     };
-    addEventListener("resize", onResize);
-    addEventListener("pointermove", onPointerMove, { passive: true });
-    addEventListener("pointerdown", onPointerDown);
-    addEventListener("click", onClick);
-    addEventListener("keydown", onKeyDown);
+    const unlisten = [
+      listen<WindowEventMap>(window, { resize: onResize, pointerdown: onPointerDown, click: onClick, keydown: onKeyDown }),
+      listen<WindowEventMap>(window, { pointermove: onPointerMove }, { passive: true }),
+    ];
 
     const onLinkClick = (e: MouseEvent) => {
       const a = (e.target as Element).closest?.("a[href]") as HTMLAnchorElement | null;
@@ -325,8 +319,7 @@ export default function Portfolio() {
     const onError = (e: ErrorEvent) => {
       if (errors++ < 5) track("js_error", { message: (e.message ?? "").slice(0, 100), source: e.filename?.split("/").pop() });
     };
-    addEventListener("click", onLinkClick);
-    addEventListener("error", onError);
+    unlisten.push(listen<WindowEventMap>(window, { click: onLinkClick, error: onError }));
 
     let hudRaf = 0;
     const hud = location.hash === "#debug" ? document.body.appendChild(Object.assign(document.createElement("div"), { id: "hud" })) : null;
@@ -387,13 +380,7 @@ export default function Portfolio() {
       mm.revert();
       cancelAnimationFrame(hudRaf);
       hud?.remove();
-      removeEventListener("resize", onResize);
-      removeEventListener("pointermove", onPointerMove);
-      removeEventListener("pointerdown", onPointerDown);
-      removeEventListener("click", onClick);
-      removeEventListener("keydown", onKeyDown);
-      removeEventListener("click", onLinkClick);
-      removeEventListener("error", onError);
+      unlisten.forEach((off) => off());
       clearTimeout(hoverTimer);
       tipLiquid.destroy();
       document.body.style.cursor = "";
@@ -462,10 +449,10 @@ export default function Portfolio() {
           {name}<span>{t.brand}</span>
         </a>
         <div className="header-actions">
-          <GlassButton variant="primary" className="btn-contact" onClick={() => openContact("header")}>
+          <GlassButton variant="primary" glass={OVER_CANVAS} className="btn-contact" onClick={() => openContact("header")}>
             {t.contact}
           </GlassButton>
-          <GlassSegmented className="lang" aria-label={t.aria.lang} options={LANG_OPTIONS} value={lang} onChange={(id) => changeLang(id, "header")} />
+          <GlassSegmented className="lang" track={LANG_TRACK} blob={LANG_BLOB} aria-label={t.aria.lang} options={LANG_OPTIONS} value={lang} onChange={(id) => changeLang(id, "header")} />
         </div>
         <div className="progress" ref={progressRef} aria-hidden="true" />
       </header>
@@ -492,40 +479,7 @@ export default function Portfolio() {
               <span>{t.titleA}</span> <span className="rainbow-text">{t.titleB}</span>
             </h2>
             <p>{t.stackBody}</p>
-            <ul className="cats">
-              {t.cats.map((c, r) => (
-                <li key={r} className={active?.r === r ? "is-active" : undefined}>
-                  <i>
-                    {TECH[r].slice(0, 4).map((x) => (
-                      <b key={x.name} style={{ "--c": x.color } as React.CSSProperties} />
-                    ))}
-                  </i>
-                  {c}
-                  <span>0{r + 1}</span>
-                </li>
-              ))}
-            </ul>
-            <div className="readout" aria-live="polite">
-              {active ? (
-                <>
-                  <span className="chip" style={{ background: active.color }}>
-                    <Logo slug={active.slug} fill={inkFor(active.color)} />
-                  </span>
-                  <span className="txt">
-                    <strong>{active.name}</strong>
-                    <small>{t.notes[active.name] ?? active.note}</small>
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span className="chip">?</span>
-                  <span className="txt">
-                    <strong>{t.readoutTitle}</strong>
-                    <small>{t.readoutSub}</small>
-                  </span>
-                </>
-              )}
-            </div>
+            <StackLegend t={t} />
           </div>
         </section>
 
@@ -647,7 +601,7 @@ export default function Portfolio() {
       </main>
       <div id="track" aria-hidden="true" />
 
-      <div id="tip" ref={tipRef} aria-hidden="true">
+      <div id="tip" ref={tipRef} data-presence="closing" aria-hidden="true">
         <Glass params={GLASS.popover} />
         <div className="tip-body" ref={tipBodyRef} />
       </div>
@@ -663,7 +617,7 @@ export default function Portfolio() {
       {glassFx && <GlassOrb open={orbOpen} inert={contactOpen} />}
 
       <div id="contact" hidden={!contactShown} data-state={contactOpen ? "open" : "closing"} inert={!contactOpen} onClick={(e) => e.target === e.currentTarget && closeContact("backdrop")}>
-        <div className="sheet" ref={sheetRef} role="dialog" aria-modal="true" aria-labelledby="contact-title" onKeyDown={trapFocus}>
+        <div className="sheet glass-card" ref={sheetRef} data-presence={contactOpen ? "open" : "closing"} role="dialog" aria-modal="true" aria-labelledby="contact-title" onKeyDown={trapFocus}>
           <Glass params={GLASS.sheet} />
           <h3 id="contact-title">{t.contactTitle}</h3>
           <div className="row">
